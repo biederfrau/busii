@@ -1,0 +1,59 @@
+digraph G {
+    179 -> 180
+    179 -> 183
+    183 [label=<183<BR/><FONT POINT-SIZE="8">Production P1</FONT>>, style=filled, fillcolor=darkolivegreen3]
+    184 [label=<184<BR/><FONT POINT-SIZE="8">Turn 1 Production P1</FONT>>, style=filled, fillcolor=dodgerblue]
+    183 -> 184
+    186 [label=<186<BR/><FONT POINT-SIZE="8">Turn 2 Production P1</FONT>>, style=filled, fillcolor=royalblue]
+    183 -> 186
+    188 [label=<188<BR/><FONT POINT-SIZE="8">Mill 1 Production P1</FONT>>, style=filled, fillcolor=firebrick1]
+    183 -> 188
+    185 [label=<185<BR/><FONT POINT-SIZE="8">Turn 1 Machining P1</FONT>>, style=filled, fillcolor=lightskyblue]
+    184 -> 185
+    187 [label=<187<BR/><FONT POINT-SIZE="8">Turn 2 Machining P1</FONT>>, style=filled, fillcolor=lightslateblue]
+    186 -> 187
+    192 [label=<192<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 192
+    193 [label=<193<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 193
+    194 [label=<194<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 194
+    195 [label=<195<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 195
+    196 [label=<196<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 196
+    202 [label=<202<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 202
+    205 [label=<205<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 205
+    213 [label=<213<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 213
+    214 [label=<214<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 214
+    216 [label=<216<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 216
+    217 [label=<217<BR/><FONT POINT-SIZE="8">Mill 1 Machining P1</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 217
+    225 [label=<225<BR/><FONT POINT-SIZE="8">Mill 1 Machining P5</FONT>>, style=filled, fillcolor=salmon]
+    188 -> 225
+    179 -> 197
+    197 [label=<197<BR/><FONT POINT-SIZE="8">Production P3</FONT>>, style=filled, fillcolor=darkolivegreen3]
+    198 [label=<198<BR/><FONT POINT-SIZE="8">Turn 1 Production P3</FONT>>, style=filled, fillcolor=dodgerblue]
+    197 -> 198
+    201 [label=<201<BR/><FONT POINT-SIZE="8">Turn 2 Production P3</FONT>>, style=filled, fillcolor=royalblue]
+    197 -> 201
+    199 [label=<199<BR/><FONT POINT-SIZE="8">Turn 1 Machining P3</FONT>>, style=filled, fillcolor=lightskyblue]
+    198 -> 199
+    203 [label=<203<BR/><FONT POINT-SIZE="8">Turn 2 Machining P3</FONT>>, style=filled, fillcolor=lightslateblue]
+    201 -> 203
+    179 -> 206
+    206 [label=<206<BR/><FONT POINT-SIZE="8">Production P4</FONT>>, style=filled, fillcolor=darkolivegreen3]
+    207 [label=<207<BR/><FONT POINT-SIZE="8">Turn 1 Production P4</FONT>>, style=filled, fillcolor=dodgerblue]
+    206 -> 207
+    209 [label=<209<BR/><FONT POINT-SIZE="8">Turn 2 Production P4</FONT>>, style=filled, fillcolor=royalblue]
+    206 -> 209
+    208 [label=<208<BR/><FONT POINT-SIZE="8">Turn 1 Machining P4</FONT>>, style=filled, fillcolor=lightskyblue]
+    207 -> 208
+    210 [label=<210<BR/><FONT POINT-SIZE="8">Turn 2 Machining P4</FONT>>, style=filled, fillcolor=lightslateblue]
+    209 -> 210
+}
