@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sys import argv
 import json
 
-f = 'block_sections.json'
+f = 'processed_data/block_sections.json'
 names = argv[1:]
 
 with open(f) as fh:

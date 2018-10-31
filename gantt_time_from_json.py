@@ -11,7 +11,7 @@ from math import inf
 from sys import argv
 import json
 
-f = 'time_sections.json'
+f = 'processed_data/time_sections.json'
 names = argv[1:]
 
 with open(f) as fh:
