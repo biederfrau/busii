@@ -10,7 +10,7 @@ thing = ARGV[1]
 
 loads = extract_and_clean_machine_receives(f).flatten.keep_if { |ev| ev[:name].end_with? thing }.sort_by { |ev| ev[:timestamp] }.reduce(Hash.new { |h, k| h[k] = [] }) do |acc, ev|
   axis = ev[:name].split('/')[1]
-  acc[axis] << [ev[:timestamp], ev[:value]]
+  acc[axis] << [ev[:timestamp].iso8601(3), ev[:value]]
 
   acc
 end
