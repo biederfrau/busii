@@ -3,7 +3,7 @@
 import dateutil.parser
 import datetime as dt
 
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 import matplotlib.dates as dates
@@ -21,6 +21,8 @@ def pairwise(iterable):
     a, b = itertools.tee(iterable)
     next(b, None)
     return zip(a, b)
+
+mpl.rcParams['timezone'] = 'Europe/Vienna'
 
 f = argv[1]
 

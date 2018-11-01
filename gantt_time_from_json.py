@@ -2,6 +2,8 @@
 
 import dateutil.parser
 import datetime as dt
+
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as dates
 from matplotlib.dates import date2num
@@ -10,6 +12,8 @@ from math import inf
 
 from sys import argv
 import json
+
+mpl.rcParams['timezone'] = 'Europe/Vienna'
 
 f = 'processed_data/time_sections.json'
 names = argv[1:]
