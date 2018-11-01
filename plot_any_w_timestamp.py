@@ -12,7 +12,7 @@ from matplotlib.dates import date2num
 import numpy as np
 
 from sys import argv, exit
-from os import path
+from pathlib import Path
 import json
 
 import itertools
@@ -26,15 +26,16 @@ mpl.rcParams['timezone'] = 'Europe/Vienna'
 
 f = argv[1]
 
-thing = path.basename(f).split('_')[0]
-colors = { "aaTorque": "tomato", "aaLoad": "mediumseagreen", 'feedRateOvr': 'deepskyblue' }
+thing = Path(f).stem.split('_')[0]
+colors = { "aaTorque": "tomato", "aaLoad": "mediumseagreen", "aaVactB": "darkorange" }
+units = { "aaTorque": "Nm",      "aaLoad": "percent",        "aaVactB": "mm/min" }
 
 with open(f) as fh:
     data = json.load(fh)
 
-fig = plt.figure()
+fig = plt.figure(figsize=(10, 8))
 
-if len(data.keys()) > 1: fig.suptitle(path.basename(f))
+if len(data.keys()) > 1: fig.suptitle(Path(f).stem)
 
 for idx, axis in enumerate(sorted(data.keys())):
     times = [date2num(dateutil.parser.parse(t[0])) for t in data[axis]]
@@ -53,6 +54,9 @@ for idx, axis in enumerate(sorted(data.keys())):
     ax.set_title(axis)
     ax.xaxis_date()
 
+    ax.set_xlabel("time")
+    ax.set_ylabel(units[thing])
+
     ax.xaxis.set_minor_locator(dates.MinuteLocator(interval=10))
     ax.xaxis.set_minor_formatter(dates.DateFormatter('%H:%M'))
 
@@ -60,4 +64,6 @@ for idx, axis in enumerate(sorted(data.keys())):
     ax.xaxis.set_major_formatter(dates.DateFormatter(''))
 
 plt.tight_layout()
+plt.savefig(f"figures/{Path(f).stem}.pdf")
+
 plt.show()
