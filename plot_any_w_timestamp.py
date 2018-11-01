@@ -12,24 +12,41 @@ from matplotlib.dates import date2num
 import numpy as np
 
 from sys import argv, exit
+from os import path
 import json
 
-from scipy.interpolate import spline
+import itertools
+
+def pairwise(iterable):
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 f = argv[1]
+
+thing = path.basename(f).split('_')[0]
+colors = { "aaTorque": "tomato", "aaLoad": "mediumseagreen", 'feedRateOvr': 'deepskyblue' }
 
 with open(f) as fh:
     data = json.load(fh)
 
 fig = plt.figure()
-fig.suptitle(f)
 
-for idx, axis in enumerate(['X', 'Y', 'Z']):
+if len(data.keys()) > 1: fig.suptitle(path.basename(f))
+
+for idx, axis in enumerate(sorted(data.keys())):
     times = [date2num(dateutil.parser.parse(t[0])) for t in data[axis]]
     points = [t[1] for t in data[axis]]
 
-    ax = fig.add_subplot(3, 1, idx + 1)
-    ax.scatter(times, points)
+    for a, b in pairwise(enumerate(times)):
+        diff = b[1] - a[1]
+
+        if diff > 0.0001:
+            points[a[0]] = float('nan')
+            points[b[0]] = float('nan')
+
+    ax = fig.add_subplot(len(data.keys()), 1, idx + 1)
+    ax.plot(times, points, linewidth=0.3, color=colors[thing])
 
     ax.set_title(axis)
     ax.xaxis_date()
