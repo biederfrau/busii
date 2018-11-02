@@ -15,6 +15,13 @@ from sys import argv, exit
 from pathlib import Path
 import json
 
+import itertools
+
+def pairwise(iterable):
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
 mpl.rcParams['timezone'] = 'Europe/Vienna'
 
 f = argv[1]
@@ -32,7 +39,7 @@ ax = fig.add_subplot(111)
 times = [date2num(dateutil.parser.parse(t[0])) for t in data[thing]]
 overrides = [t[1] for t in data[thing]]
 
-ax.step(times, overrides, color=colors[thing])
+ax.step(times, overrides, color=colors[thing], where="post")
 
 ax.xaxis_date()
 
