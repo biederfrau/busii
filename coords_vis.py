@@ -6,6 +6,8 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import seaborn as sns
 
+from pathlib import Path
+
 import sys
 
 data = pd.read_csv(sys.argv[1])
@@ -22,6 +24,8 @@ ax.set_zlabel("z")
 ax.set_title(sys.argv[1])
 
 fig.colorbar(pts)
-
 plt.tight_layout()
+
+plt.savefig(f"figures/{Path(sys.argv[1]).stem}.pdf")
+
 plt.show()

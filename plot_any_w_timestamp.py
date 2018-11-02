@@ -41,6 +41,10 @@ for idx, axis in enumerate(sorted(data.keys())):
     times = [date2num(dateutil.parser.parse(t[0])) for t in data[axis]]
     points = [t[1] for t in data[axis]]
 
+    if len(times) == 1:
+        print("only one data point---can't do much. bye")
+        exit(-1)
+
     for a, b in pairwise(enumerate(times)):
         diff = b[1] - a[1]
 

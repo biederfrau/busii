@@ -39,6 +39,10 @@ ax = fig.add_subplot(111)
 times = [date2num(dateutil.parser.parse(t[0])) for t in data[thing]]
 overrides = [t[1] for t in data[thing]]
 
+if len(times) == 1:
+    print("only one data point---cant do much. bye")
+    exit(-1)
+
 ax.step(times, overrides, color=colors[thing], where="post")
 
 ax.xaxis_date()
