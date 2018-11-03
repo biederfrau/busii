@@ -40,6 +40,9 @@ Dir['lowerhousing/production/**/*.xes.yaml'].each do |file|
     b = a + 0.5 if b.nil? # short intermittent ones
     h[p][:sections] << [a.iso8601(3), b.iso8601(3)]
   end
+
+  _, last_b = h[p][:sections].last.map { |x| Time.parse(x) }
+  h[p][:sections] << [timestamps.last[:timestamp].iso8601(3), (timestamps.last[:timestamp] + 0.5).iso8601(3)] unless last_b >= timestamps.last[:timestamp]
 end
 
 File.write 'processed_data/time_sections.json', h.to_json
