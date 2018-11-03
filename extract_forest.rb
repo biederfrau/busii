@@ -23,5 +23,3 @@ STDOUT.puts "strict digraph G {"
 traverse_print_graphviz first_level_children, max_level: 3, indent: " "*4, ids: ids
 traverse_print_graphviz [ids.first], level: nil, indent: " "*4, ids: ids until ids.empty?
 STDOUT.puts "}"
-
-
