@@ -55,7 +55,7 @@ def traverse_print_graphviz(kiddos, level: 1, max_level: nil, indent: "", ids: n
       x['data']
     end
 
-    next_gen.each do |child|
+    next_gen.sort_by! { |x| x.to_i }.each do |child|
       path = Dir["lowerhousing/#{KIND}/**/#{child}.xes.yaml"].first
       head = File.foreach(path).first(50).join
       kind = head.scan(/cpee:name: (.*)$/).last.first
@@ -67,7 +67,7 @@ def traverse_print_graphviz(kiddos, level: 1, max_level: nil, indent: "", ids: n
       ids&.delete child
     end
 
-    traverse_print_graphviz next_gen.sort_by { |x| x.to_i }, level: level&.+(1), max_level: max_level, indent: indent, ids: ids
+    traverse_print_graphviz next_gen, level: level&.+(1), max_level: max_level, indent: indent, ids: ids
   end
 end
 
