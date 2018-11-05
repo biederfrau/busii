@@ -20,6 +20,6 @@ end.map { |event| event['event']['list']['data_receiver'].first['data'].scan(/\d
 STDERR.puts "first_level_children are: #{first_level_children.inspect} (#{first_level_children.size})"
 
 STDOUT.puts "strict digraph G {"
-traverse_print_graphviz first_level_children, max_level: 3, indent: " "*4, ids: ids
+traverse_print_graphviz first_level_children.sort_by { |x| x.to_i }, max_level: 3, indent: " "*4, ids: ids
 traverse_print_graphviz [ids.first], level: nil, indent: " "*4, ids: ids until ids.empty?
 STDOUT.puts "}"

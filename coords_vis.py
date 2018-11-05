@@ -28,4 +28,4 @@ plt.tight_layout()
 
 plt.savefig(f"figures/{Path(sys.argv[1]).stem}.pdf")
 
-plt.show()
+#  plt.show()

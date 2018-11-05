@@ -28,7 +28,7 @@ f = argv[1]
 
 thing = Path(f).stem.split('_')[0]
 colors = { "aaTorque": "tomato", "aaLoad": "mediumseagreen", "aaVactB": "darkorange" }
-units = { "aaTorque": "Nm",      "aaLoad": "percent",        "aaVactB": "mm/min" }
+units =  { "aaTorque": "Nm",     "aaLoad": "percent",        "aaVactB": "mm/min" }
 
 with open(f) as fh:
     data = json.load(fh)

@@ -61,4 +61,4 @@ ax.set_ylabel(units[thing])
 plt.tight_layout()
 plt.savefig(f"figures/{Path(f).stem}.pdf")
 
-plt.show()
+#  plt.show()

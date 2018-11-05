@@ -67,7 +67,7 @@ def traverse_print_graphviz(kiddos, level: 1, max_level: nil, indent: "", ids: n
       ids&.delete child
     end
 
-    traverse_print_graphviz next_gen, level: level&.+(1), max_level: max_level, indent: indent, ids: ids
+    traverse_print_graphviz next_gen.sort_by { |x| x.to_i }, level: level&.+(1), max_level: max_level, indent: indent, ids: ids
   end
 end
 

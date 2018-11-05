@@ -40,6 +40,34 @@ strict digraph G {
     188 -> 225
     294 [label=<294<BR/><FONT POINT-SIZE="8">Mill 2 Machining P1</FONT>>, style=filled, fillcolor="#cd4f39"]
     226 -> 294
+    179 -> 189
+    189 [label=<189<BR/><FONT POINT-SIZE="8">Plain Instance P2</FONT>>, style=filled, fillcolor="#ffde00"]
+    190 [label=<190<BR/><FONT POINT-SIZE="8">Turn 2 Production P2</FONT>>, style=filled, fillcolor="#4169e1"]
+    189 -> 190
+    295 [label=<295<BR/><FONT POINT-SIZE="8">Mill 2 Production P2</FONT>>, style=filled, fillcolor="#8b1a1a"]
+    189 -> 295
+    200 [label=<200<BR/><FONT POINT-SIZE="8">Mill 1 Production P2</FONT>>, style=filled, fillcolor="#ff3030"]
+    189 -> 200
+    191 [label=<191<BR/><FONT POINT-SIZE="8">Turn 2 Machining P2</FONT>>, style=filled, fillcolor="#6f8ee7"]
+    190 -> 191
+    211 [label=<211<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
+    200 -> 211
+    215 [label=<215<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
+    200 -> 215
+    222 [label=<222<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
+    200 -> 222
+    224 [label=<224<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
+    200 -> 224
+    237 [label=<237<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
+    200 -> 237
+    238 [label=<238<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
+    200 -> 238
+    250 [label=<250<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
+    200 -> 250
+    296 [label=<296<BR/><FONT POINT-SIZE="8">Mill 2 Machining P2</FONT>>, style=filled, fillcolor="#cd4f39"]
+    295 -> 296
+    297 [label=<297<BR/><FONT POINT-SIZE="8">Mill 2 Machining P2</FONT>>, style=filled, fillcolor="#cd4f39"]
+    295 -> 297
     179 -> 197
     197 [label=<197<BR/><FONT POINT-SIZE="8">Production P3</FONT>>, style=filled, fillcolor="#a2cd5a"]
     198 [label=<198<BR/><FONT POINT-SIZE="8">Turn 1 Production P3</FONT>>, style=filled, fillcolor="#1e90ff"]
@@ -86,6 +114,12 @@ strict digraph G {
     207 -> 208
     210 [label=<210<BR/><FONT POINT-SIZE="8">Turn 2 Machining P4</FONT>>, style=filled, fillcolor="#6f8ee7"]
     209 -> 210
+    240 [label=<240<BR/><FONT POINT-SIZE="8">Mill 1 Machining P4</FONT>>, style=filled, fillcolor="#fa8072"]
+    212 -> 240
+    242 [label=<242<BR/><FONT POINT-SIZE="8">Mill 1 Machining P4</FONT>>, style=filled, fillcolor="#fa8072"]
+    212 -> 242
+    252 [label=<252<BR/><FONT POINT-SIZE="8">Mill 1 Machining P4</FONT>>, style=filled, fillcolor="#fa8072"]
+    212 -> 252
     330 [label=<330<BR/><FONT POINT-SIZE="8">Mill 2 Machining P4</FONT>>, style=filled, fillcolor="#cd4f39"]
     329 -> 330
     331 [label=<331<BR/><FONT POINT-SIZE="8">Mill 2 Machining P4</FONT>>, style=filled, fillcolor="#cd4f39"]
@@ -94,40 +128,6 @@ strict digraph G {
     329 -> 332
     333 [label=<333<BR/><FONT POINT-SIZE="8">Mill 2 Machining P4</FONT>>, style=filled, fillcolor="#cd4f39"]
     329 -> 333
-    240 [label=<240<BR/><FONT POINT-SIZE="8">Mill 1 Machining P4</FONT>>, style=filled, fillcolor="#fa8072"]
-    212 -> 240
-    242 [label=<242<BR/><FONT POINT-SIZE="8">Mill 1 Machining P4</FONT>>, style=filled, fillcolor="#fa8072"]
-    212 -> 242
-    252 [label=<252<BR/><FONT POINT-SIZE="8">Mill 1 Machining P4</FONT>>, style=filled, fillcolor="#fa8072"]
-    212 -> 252
-    179 -> 189
-    189 [label=<189<BR/><FONT POINT-SIZE="8">Plain Instance P2</FONT>>, style=filled, fillcolor="#ffde00"]
-    190 [label=<190<BR/><FONT POINT-SIZE="8">Turn 2 Production P2</FONT>>, style=filled, fillcolor="#4169e1"]
-    189 -> 190
-    295 [label=<295<BR/><FONT POINT-SIZE="8">Mill 2 Production P2</FONT>>, style=filled, fillcolor="#8b1a1a"]
-    189 -> 295
-    200 [label=<200<BR/><FONT POINT-SIZE="8">Mill 1 Production P2</FONT>>, style=filled, fillcolor="#ff3030"]
-    189 -> 200
-    191 [label=<191<BR/><FONT POINT-SIZE="8">Turn 2 Machining P2</FONT>>, style=filled, fillcolor="#6f8ee7"]
-    190 -> 191
-    296 [label=<296<BR/><FONT POINT-SIZE="8">Mill 2 Machining P2</FONT>>, style=filled, fillcolor="#cd4f39"]
-    295 -> 296
-    297 [label=<297<BR/><FONT POINT-SIZE="8">Mill 2 Machining P2</FONT>>, style=filled, fillcolor="#cd4f39"]
-    295 -> 297
-    211 [label=<211<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
-    200 -> 211
-    215 [label=<215<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
-    200 -> 215
-    222 [label=<222<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
-    200 -> 222
-    224 [label=<224<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
-    200 -> 224
-    237 [label=<237<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
-    200 -> 237
-    238 [label=<238<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
-    200 -> 238
-    250 [label=<250<BR/><FONT POINT-SIZE="8">Mill 1 Machining P2</FONT>>, style=filled, fillcolor="#fa8072"]
-    200 -> 250
     179 -> 218
     218 [label=<218<BR/><FONT POINT-SIZE="8">Plain Instance P5</FONT>>, style=filled, fillcolor="#ffde00"]
     219 [label=<219<BR/><FONT POINT-SIZE="8">Turn 2 Production P5</FONT>>, style=filled, fillcolor="#4169e1"]
