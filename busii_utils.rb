@@ -107,7 +107,7 @@ def extract_and_clean_machine_receives(file)
         server_timestamp: Time.parse(ugly_event['meta']['ServerTimestamp']),
         value: case ugly_event['name'].split('/').last
                when 'aaLeadP', 'aaTorque', 'aaLoad', 'driveLoad', 'actSpeed', 'aaVactB', 'feedRateOvr', 'actToolRadius', 'actToolLength1', 'speedOvr' then ugly_event['value'].to_f
-               when 'progStatus', 'resetActive', 'acAlarmStat', 'turnState', 'actTNumber', 'findBlActive' then ugly_event['value'].to_i
+               when 'progStatus', 'resetActive', 'acAlarmStat', 'turnState', 'actTNumber', 'findBlActive', 'actLineNumber' then ugly_event['value'].to_i
                when 'blockNoStr', 'msg', 'actBlock', 'actToolIdent', 'progName1' then ugly_event['value']
                else puts "unexpected: #{ugly_event['name']}"; end,
         origin: File.basename(file, '.xes.yaml').to_i

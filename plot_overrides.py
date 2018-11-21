@@ -27,8 +27,8 @@ mpl.rcParams['timezone'] = 'Europe/Vienna'
 f = argv[1]
 thing = Path(f).stem.split('_')[0]
 
-colors = { "feedRateOvr": "mediumslateblue", "speedOvr": "mediumorchid", "actToolRadius": "lightslategray" }
-units  = { "feedRateOvr": "percent",         "speedOvr": "percent",      "actToolRadius": "mm" }
+colors = { "feedRateOvr": "mediumslateblue", "speedOvr": "mediumorchid", "actToolRadius": "lightslategray", 'actLineNumber': 'red' }
+units  = { "feedRateOvr": "percent",         "speedOvr": "percent",      "actToolRadius": "mm", 'actLineNumber': 'line' }
 
 with open(f) as fh:
     data = json.load(fh)
@@ -59,6 +59,6 @@ ax.set_xlabel("time")
 ax.set_ylabel(units[thing])
 
 plt.tight_layout()
-plt.savefig(f"figures/{Path(f).stem}.pdf")
+plt.savefig(f"figures/{Path(f).stem}.jpg")
 
-#  plt.show()
+plt.show()

@@ -26,6 +26,6 @@ ax.set_title(sys.argv[1])
 fig.colorbar(pts)
 plt.tight_layout()
 
-plt.savefig(f"figures/{Path(sys.argv[1]).stem}.pdf")
+plt.savefig(f"figures/{Path(sys.argv[1]).stem}.jpg")
 
-#  plt.show()
+plt.show()

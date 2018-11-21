@@ -68,6 +68,6 @@ for idx, axis in enumerate(sorted(data.keys())):
     ax.xaxis.set_major_formatter(dates.DateFormatter(''))
 
 plt.tight_layout()
-plt.savefig(f"figures/{Path(f).stem}.pdf")
+plt.savefig(f"figures/{Path(f).stem}.jpg")
 
 plt.show()
