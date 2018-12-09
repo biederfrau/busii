@@ -111,10 +111,20 @@ svg text {
     font-size: 12px;
     opacity: 0.8;
     pointer-events: none;
-    text-align: justify;
-    max-width: 350px;
+    /* text-align: justify; */
+    max-width: 450px;
 }
 
 .title-text {
     font-style: italic;
+}
+
+#scatter .point:hover {
+    fill: #7A95D2;
+    stroke: white;
+    stroke-width: 0.5;
+}
+
+#scatter .point.expanded {
+    opacity: 0.3;
 }

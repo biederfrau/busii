@@ -25,6 +25,14 @@ get '/proc/:id/timeseries' do |id|
   send_file file
 end
 
+get '/proc/:id/timestamps' do |id|
+  content_type :json
+  file = File.join 'data', id, 'timestamps.json'
+  halt 400 unless File.exist? file
+
+  send_file file
+end
+
 get '/proc/:id/misc' do |id|
   content_type :json
   file = File.join 'data', id, 'misc.json'

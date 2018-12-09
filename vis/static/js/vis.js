@@ -1,9 +1,127 @@
 function setup_scatter(state) {
+    let style = window.getComputedStyle(document.getElementById('activity')),
+        margin = {top: 20, right: 20, bottom: 23, left: 37},
+        width = parseFloat(style.width),
+        height = parseFloat(style.height),
+        canvas = d3.select("#scatter");
 
+    let angle = Math.PI/1.15, scale = 0.65, origin = [384, 400];
+
+    let grid = d3._3d()
+        .shape('GRID', 40)
+        .origin(origin)
+        .x(d => d[0])
+        .y(d => d[2])
+        .z(d => d[1])
+        .rotateX(-angle)
+        .rotateY( angle)
+        .scale(scale);
+
+    let d3point_proj = d3._3d()
+        .x(d => d[0])
+        .y(d => d[2])
+        .z(d => d[1])
+        .origin(origin)
+        .rotateX(-angle)
+        .rotateY( angle)
+        .scale(scale);
+
+    let ctx = { "d3point_proj": d3point_proj, "grid": grid };
+
+    let mx, my, mouseX, mouseY;
+    let drag = d3.drag().on('drag', () => {
+        mouseX = mouseX || 0;
+        mouseY = mouseY || 0;
+        let beta = (d3.event.x - mx + mouseX) * Math.PI / 530,
+            alpha = (d3.event.y - my + mouseY) * Math.PI / 530;
+
+        d3point_proj.rotateY(beta + angle).rotateX(alpha - angle);
+        grid.rotateY(beta + angle).rotateX(alpha - angle);
+
+        draw_scatter(state.data.cluster_coords, state, ctx);
+    }).on('start', () => {
+        mx = d3.event.x;
+        my = d3.event.y;
+    }).on('end', () => {
+        mouseX = d3.event.x - mx + mouseX;
+        mouseY = d3.event.y - my + mouseY;
+    });
+
+    canvas.call(drag);
+
+    let zoom = d3.zoom().on('zoom', () => {
+        let trafo = d3.event.transform;
+
+        let points = canvas.selectAll(".point, .cluster-point");
+        points.attr("transform", trafo.toString());
+
+        canvas.selectAll(".grid").attr("transform", trafo.toString());
+    });
+
+    canvas.call(zoom);
+
+    canvas.on("dblclick.zoom", null);
+    canvas.on("dblclick", () => {
+        canvas.call(zoom.transform, d3.zoomIdentity);
+    });
+
+    draw_scatter(state.data.cluster_coords, state, ctx);
 }
 
-function draw_scatter(data, state) {
+function draw_scatter(data, state, context) {
+    let style = window.getComputedStyle(document.getElementById('activity')),
+        margin = {top: 20, right: 20, bottom: 23, left: 37},
+        width = parseFloat(style.width),
+        height = parseFloat(style.height),
+        canvas = d3.select("#scatter");
 
+    let grid_points = [];
+    for(let x = -400; x < 400; x += 20) {
+        for(let z = -400; z < 400; z += 20) {
+            grid_points.push([x, z, 0]);
+        }
+    }
+
+    let grid = canvas.selectAll('path').data(context['grid'](grid_points));
+    grid.enter().append("path")
+        .classed("_3d", true)
+        .classed("grid", true)
+        .merge(grid)
+        .attr("stroke", "black")
+        .attr("stroke-width", 0.3)
+        .attr("fill", d => !d.ccw ? 'lightgrey' : '#717171')
+        .attr("fill-opacity", 0.9)
+        .attr("d", context['grid'].draw);
+
+    let centroids = _.map(data, d => [d.centroid, d.min_time]);
+    let x_min = d3.mean(centroids, d => d[0][0]), y_min = d3.mean(centroids, d => d[0][1]), z_min = d3.min(centroids, d => d[0][2]);
+    centroids = _.map(centroids, d => [d[0][0] - x_min, d[0][1] - y_min, d[0][2] - z_min, d[1]]);
+
+    let points = canvas.selectAll(".point").data(context["d3point_proj"](centroids));
+    points.enter().append("circle")
+        .classed("point", true)
+        .classed("_3d", true)
+        .merge(points)
+        .attr("cx", d => d.projected.x)
+        .attr("cy", d => d.projected.y)
+        .attr("fill", "#4863A0")
+        .attr("r", 4)
+        .on("mouseover", function() { d3.select(this).raise(); })
+        .on("mouseenter", (d, i) => {
+            d3.select("body").append("div")
+                .attr("id", "tooltip")
+                .classed("tooltip", true)
+                .style("top", d3.event.pageY + "px").style("left", d3.event.pageX + 5 + "px")
+                .html(`${_.round(d[0], 3)}, ${_.round(d[1], 3)}, ${_.round(d[2], 3)} (${data[i]['points'].length})`);
+        })
+        .on("mouseleave", () => d3.select("#tooltip").remove())
+        .on("click", function(d, i) {
+            d.expanded = !d.expanded;
+            d3.select(this).classed("expanded", d.expanded);
+            // TODO
+        });
+
+    points.exit().remove();
 }
 
 function setup_activity(state) {
@@ -235,6 +353,7 @@ var state;
 function do_the_things() {
     state = {
         step: 0,
+        stepsize: 1,
         timestamps: [],
         dispatcher: d3.dispatch("time:filter", "control:step"),
         proc_id: new URL(window.location.href).searchParams.get("p"),
@@ -251,8 +370,6 @@ function do_the_things() {
     });
 
     let q = fetch(`/proc/${state.proc_id}/cluster_coords`).then(response => response.json()).then(json => {
-        return;
-
         state.data.cluster_coords = json;
         setup_scatter(state);
     });
@@ -269,27 +386,61 @@ function do_the_things() {
         setup_time(state);
     });
 
-    $("#control #play").click(() => {
-        console.log("clicked play");
+    let t = fetch(`/proc/${state.proc_id}/timestamps`).then(response => response.json()).then(json => {
+        state.timestamps = json;
+        state.step = state.timestamps.length - 1;
     });
 
-    $("#control #pause").click(() => {
-        console.log("clicked pause");
+    $("#control #play").click(function() {
+        $(this).attr("disabled", true);
+        $("#control #pause").attr("disabled", false);
     });
 
-    $("#control #step-forward").click(() => {
-        console.log("stepped forward");
+    $("#control #pause").click(function() {
+        $(this).attr("disabled", true);
+        $("#control #play").attr("disabled", false);
     });
 
-    $("#control #step-backward").click(() => {
+    $("#control #step-forward").click(function() {
+        state.step += state.stepsize;
+
+        if(state.step >= state.timestamps.length - 1) {
+            $(this).attr("disabled", true);
+            $("#control #to-end").attr("disabled", true);
+            return;
+        }
+
+        $("#control #step-backward").attr("disabled", false);
+        $("#control #to-start").attr("disabled", false);
+    });
+
+    $("#control #step-backward").click(function() {
         console.log("stepped backward");
+        state.step -= state.stepsize;
+
+        if(state.step === 0) {
+            $(this).attr("disabled", true);
+            $("#control #to-start").attr("disabled", true);
+            return;
+        }
+
+        $("#control #step-forward").attr("disabled", false);
+        $("#control #to-end").attr("disabled", false);
     });
 
-    $("#control #to-start").click(() => {
-        console.log("stepped to start");
+    $("#control #to-start").click(function() {
+        state.step = 0;
+        $("#control #step-forward").attr("disabled", false);
+        $("#control #step-backward").attr("disabled", true);
+        $("#control #to-end").attr("disabled", false);
+        $(this).attr("disabled", true);
     });
 
-    $("#control #to-end").click(() => {
-        console.log("stepped to end");
+    $("#control #to-end").click(function() {
+        state.step = state.timestamps.length - 1;
+        $("#control #step-forward").attr("disabled", true);
+        $("#control #step-backward").attr("disabled", false);
+        $("#control #to-start").attr("disabled", false);
+        $(this).attr("disabled", true);
     });
 }

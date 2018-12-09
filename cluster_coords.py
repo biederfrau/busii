@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 n = 600
-data = pd.read_csv(sys.argv[1])
+data = pd.read_csv(sys.argv[1])[["X", "Y", "Z"]]
 clustering = sklearn.cluster.KMeans(n_clusters=n, n_jobs=-1).fit(data)
 centroids = clustering.cluster_centers_
 
@@ -27,4 +27,4 @@ ax.set_title(f"compressed to {n} points by k-means")
 plt.savefig(f"figures/compress_{Path(sys.argv[1]).stem}.pdf")
 
 plt.tight_layout()
-#  plt.show()
+plt.show()
