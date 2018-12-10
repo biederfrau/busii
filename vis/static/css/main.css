@@ -128,3 +128,7 @@ svg text {
 #scatter .point.expanded {
     opacity: 0.3;
 }
+
+table {
+    text-align: left !important;
+}

@@ -14,12 +14,17 @@
     <script src="js/remote/jquery-3.3.1.js"></script>
     <script src="js/remote/jquery.treetable.js"></script>
     <script src="js/remote/mustache.js"></script>
+    <script src="js/remote/tippy.all.min.js"></script>
 
     <script src="js/ui.js" type="text/javascript"></script>
     <script src="js/vis.js" type="text/javascript"></script>
 
     <link rel="stylesheet" href="css/main.css" type="text/css">
+    <link rel="stylesheet" href="css/remote/tippy/light-border.css" type="text/css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+    <link rel="stylesheet" href="css/remote/jquery.treetable.css"/>
+    <link rel="stylesheet" href="css/remote/jquery.treetable.theme.default.css" />
 
     <template id="tabs-template">
       <div class="tabs">
@@ -37,6 +42,20 @@
         </svg>
       </div>
       {{/keys}}
+    </template>
+
+    <template id="treetable-template">
+      <div style="height: 600px; width: 500px; overflow-y: auto;">
+        <table id="example-basic-expandable">
+          <tbody>
+            {{#nodes}}
+            <tr data-tt-id="{{id}}" data-tt-parent-id="{{parent}}">
+              <td>{{name}}</td>
+            </tr>
+            {{/nodes}}
+          </tbody>
+        </table>
+      </div>
     </template>
   </head>
 
@@ -58,12 +77,13 @@
       </svg>
 
       <div id="control">
-        <button id="to-start"><i class="fa fa-fast-backward"></i></button>
-        <button id="step-backward"><i class="fa fa-step-backward"></i></button>
-        <button id="play"><i class="fa fa-play"></i></button>
-        <button disabled id="pause"><i class="fa fa-pause"></i></button>
-        <button disabled id="step-forward"><i class="fa fa-step-forward"></i></button>
-        <button disabled id="to-end"><i class="fa fa-fast-forward"></i></button>
+        <button data-tippy="go to start" id="to-start"><i class="fa fa-fast-backward"></i></button>
+        <button data-tippy="step backward" id="step-backward"><i class="fa fa-step-backward"></i></button>
+        <button data-tippy="auto stepping" id="play"><i class="fa fa-play"></i></button>
+        <button data-tippy="stop auto stepping" disabled id="pause"><i class="fa fa-pause"></i></button>
+        <button data-tippy="step forward" disabled id="step-forward"><i class="fa fa-step-forward"></i></button>
+        <button data-tippy="go to end" disabled id="to-end"><i class="fa fa-fast-forward"></i></button>
+        <button id="select" style="float:right; margin-right: 0;">select</button>
       </div>
     </div>
 

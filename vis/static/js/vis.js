@@ -106,21 +106,15 @@ function draw_scatter(data, state, context) {
         .attr("cy", d => d.projected.y)
         .attr("fill", "#4863A0")
         .attr("r", 4)
+        .attr("data-tippy-content", (d, i) => `${_.round(d[0], 3)}, ${_.round(d[1], 3)}, ${_.round(d[2], 3)} (${data[i].points.length})`)
         .on("mouseover", function() { d3.select(this).raise(); })
-        .on("mouseenter", (d, i) => {
-            d3.select("body").append("div")
-                .attr("id", "tooltip")
-                .classed("tooltip", true)
-                .style("top", d3.event.pageY + "px").style("left", d3.event.pageX + 5 + "px")
-                .html(`${_.round(d[0], 3)}, ${_.round(d[1], 3)}, ${_.round(d[2], 3)} (${data[i]['points'].length})`);
-        })
-        .on("mouseleave", () => d3.select("#tooltip").remove())
         .on("click", function(d, i) {
             d.expanded = !d.expanded;
             d3.select(this).classed("expanded", d.expanded);
             // TODO
         });
 
+    tippy("#scatter .point");
     points.exit().remove();
 }
 
@@ -391,6 +385,10 @@ function do_the_things() {
         state.step = state.timestamps.length - 1;
     });
 
+    let u = fetch(`/tree`).then(response => response.json()).then(json => {
+        state.tree = json;
+    });
+
     $("#control #play").click(function() {
         $(this).attr("disabled", true);
         $("#control #pause").attr("disabled", false);
@@ -442,5 +440,39 @@ function do_the_things() {
         $("#control #step-backward").attr("disabled", false);
         $("#control #to-start").attr("disabled", false);
         $(this).attr("disabled", true);
+    });
+
+    tippy("#control #select", {
+        trigger: "click",
+        arrow: true,
+        interactive: true,
+        content: "loading...",
+        size: "large",
+        maxWidth: "800px",
+        onShown: (tip) => {
+            let template = `
+              <div style="height: 600px; width: 500px; overflow-y: auto;">
+                <table id="example-basic-expandable">
+                  <tbody>
+                    {{#nodes}}
+                    <tr data-tt-id="{{id}}" data-tt-parent-id="{{parent}}">
+                      <td>{{name}}</td>
+                    </tr>
+                    {{/nodes}}
+                  </tbody>
+                </table>
+              </div>
+            `;
+
+            Mustache.parse(template);
+
+            let rendered = Mustache.render(template, {
+                nodes: state.tree
+            });
+
+            tip.setContent(rendered);
+            $("#example-basic-expandable").treetable({ expandable: true });
+        },
+        theme: "light-border"
     });
 }

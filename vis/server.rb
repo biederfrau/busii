@@ -9,6 +9,14 @@ get '/' do
   redirect '/index.html'
 end
 
+get '/tree' do
+  content_type :json
+  file = File.join 'data', 'tree.json'
+  halt 400 unless File.exist? file
+
+  send_file file
+end
+
 get '/proc/:id/cluster_coords' do |id|
   content_type :json
   file = File.join 'data', id, 'cluster_coords.json'
