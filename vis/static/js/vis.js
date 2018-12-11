@@ -32,13 +32,64 @@ function setup_scatter(state) {
     let drag = d3.drag().on('drag', () => {
         mouseX = mouseX || 0;
         mouseY = mouseY || 0;
-        let beta = (d3.event.x - mx + mouseX) * Math.PI / 530,
-            alpha = (d3.event.y - my + mouseY) * Math.PI / 530;
+        if(d3.event.sourceEvent.buttons == 1) {
+            let beta = (d3.event.x - mx + mouseX) * Math.PI / 530,
+                alpha = (d3.event.y - my + mouseY) * Math.PI / 530;
 
-        d3point_proj.rotateY(beta + angle).rotateX(alpha - angle);
-        grid.rotateY(beta + angle).rotateX(alpha - angle);
+            d3point_proj.rotateY(beta + angle).rotateX(alpha - angle);
+            grid.rotateY(beta + angle).rotateX(alpha - angle);
 
-        draw_scatter(state.data.cluster_coords, state, ctx);
+            draw_scatter(state.data.cluster_coords, state, ctx);
+        } else if(d3.event.sourceEvent.buttons == 2) {
+            return;
+            // FIXME
+            canvas.selectAll(".point").attr("transform", function() {
+                this.x = this.x || 0;
+                this.y = this.y || 0;
+
+                let scale = "scale(1)";
+                if(d3.select(this).attr('transform')) {
+                    let split = d3.select(this).attr("transform").split(" ");
+                    if(split.length >= 2) {
+                        scale = split[1];
+                    }
+
+                    let translate = split[0].slice(10, -1).split(",");
+                    this.x = +translate[0];
+                    this.y = +translate[1];
+                }
+
+                this.x += d3.event.dx;
+                this.y += d3.event.dy;
+
+                return "translate(" + [this.x, this.y] + ") " + scale;
+            });
+
+            canvas.selectAll(".grid").attr("transform", function() {
+                this.x = this.x || 0;
+                this.y = this.y || 0;
+
+                let scale = "scale(1)";
+                if(d3.select(this).attr('transform')) {
+                    let split = d3.select(this).attr("transform").split(" ");
+                    if(split.length >= 2) {
+                        scale = split[1];
+                    }
+
+                    let translate = split[0].slice(10, -1).split(",");
+                    this.x = +translate[0];
+                    this.y = +translate[1];
+                }
+
+                this.x += d3.event.dx;
+                this.y += d3.event.dy;
+
+                this.x += d3.event.dx;
+                this.y += d3.event.dy;
+
+                return "translate(" + [this.x, this.y] + ")";
+            });
+        }
     }).on('start', () => {
         mx = d3.event.x;
         my = d3.event.y;
@@ -47,6 +98,7 @@ function setup_scatter(state) {
         mouseY = d3.event.y - my + mouseY;
     });
 
+    canvas.on("contextmenu", () => d3.event.preventDefault());
     canvas.call(drag);
 
     let zoom = d3.zoom().on('zoom', () => {
@@ -56,13 +108,22 @@ function setup_scatter(state) {
         points.attr("transform", trafo.toString());
 
         canvas.selectAll(".grid").attr("transform", trafo.toString());
-    });
+    });//.filter(() => d3.event.buttons == 2 || d3.event.button == 0);
 
+    // canvas.append("rect").attr("width", "100%").attr("height", "100%").style("opacity", 0.0).raise().call(zoom);
     canvas.call(zoom);
 
     canvas.on("dblclick.zoom", null);
     canvas.on("dblclick", () => {
         canvas.call(zoom.transform, d3.zoomIdentity);
+    });
+
+    state.dispatcher.on("control:step.scatter control:step-drag.scatter", t => {
+        canvas.selectAll(".point").classed("inactive", d => {
+            let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%f%Z')
+            let tp = parse_time(d[3]);
+            return tp >= t;
+        });
     });
 
     draw_scatter(state.data.cluster_coords, state, ctx);
@@ -94,7 +155,7 @@ function draw_scatter(data, state, context) {
         .attr("d", context['grid'].draw);
 
     let centroids = _.map(data, d => [d.centroid, d.min_time]);
-    let x_min = d3.mean(centroids, d => d[0][0]), y_min = d3.mean(centroids, d => d[0][1]), z_min = d3.min(centroids, d => d[0][2]);
+    let x_min = d3.median(centroids, d => d[0][0]), y_min = d3.median(centroids, d => d[0][1]), z_min = d3.min(centroids, d => d[0][2]);
     centroids = _.map(centroids, d => [d[0][0] - x_min, d[0][1] - y_min, d[0][2] - z_min, d[1]]);
 
     let points = canvas.selectAll(".point").data(context["d3point_proj"](centroids));
@@ -131,6 +192,47 @@ function setup_activity(state) {
     let x = d3.scaleTime().range([margin.left, width - margin.right]),
         y = d3.scaleBand().rangeRound([height - margin.bottom, margin.top]).padding(0.1);
 
+    state.dispatcher.on("control:step.activity", t => {
+        let x12 = x(t);
+        canvas.select(".time-line")
+            .attr("x1", x12)
+            .attr("x2", x12)
+            .raise();
+    });
+
+    let time_line = canvas.append("line")
+        .classed("time-line", true)
+        .attr("x1", width - margin.right)
+        .attr("y1", height - margin.bottom + 12)
+        .attr("x2", width - margin.right)
+        .attr("y2", margin.top - 10)
+        .attr("stroke", "black")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", 8);
+
+    // let handle_size = 4, handle = canvas.append("rect")
+        // .classed("handle", true)
+        // .attr("x", width - margin.right - handle_size/2)
+        // .attr("y", margin.top - handle_size/2 - 10)
+        // .attr("height", handle_size)
+        // .attr("width", handle_size);
+
+    let drag = d3.drag().on('drag', () => {
+        if(d3.event.x <= margin.left || d3.event.x >= width - margin.right) { return; }
+        time_line.attr("x1", d3.event.x).attr("x2", d3.event.x);
+
+        let time = x.invert(d3.event.x);
+        state.dispatcher.call("control:step-drag", this, time);
+    }).on('end', () => {
+        let time = x.invert(d3.event.x);
+        let step = _.findIndex(state.timestamps, t => t >= time);
+        if(step === -1) { step = state.timestamps.length - 1; }
+        state.step = step;
+        time_line.attr("x1", x(state.timestamps[step])).attr("x2", x(state.timestamps[step]));
+        state.dispatcher.call("control:step", this, state.timestamps[step]);
+    });
+    time_line.call(drag);
+
     let ctx = { "x": x, "y": y, "height": height };
     draw_activity(state.data.activity, state, ctx);
 }
@@ -150,7 +252,7 @@ function draw_activity(data, state, context) {
 
     let bars = canvas.selectAll(".bar").data(parsed_data);
 
-    bars.enter().append("rect")
+    bars.enter().insert("rect", ".time-line")
         .classed("bar", true)
         .merge(bars)
         .attr("x", d => context.x(d[0]))
@@ -185,6 +287,20 @@ function setup_gantt(name, data) {
     let x = d3.scaleTime().range([margin.left, width - margin.right]),
         y = d3.scaleBand().rangeRound([height - margin.bottom, margin.top]).padding(0.1);
 
+    canvas.append("rect")
+        .classed("time-mask", true)
+        .attr("x", width - margin.right)
+        .attr("y", margin.top)
+        .attr("width", 0)
+        .attr("height", height - margin.top - margin.bottom);
+
+    state.dispatcher.on(`control:step.${name} control:step-drag.${name}`, t => {
+        let xcoord = x(t);
+        canvas.select(".time-mask")
+            .attr("x", xcoord + 1)
+            .attr("width", width - margin.right - xcoord);
+    });
+
     let ctx = { "x": x, "y": y, "height": height };
     draw_gantt(name, data, state, ctx);
 }
@@ -205,7 +321,7 @@ function draw_gantt(name, data, state, context) {
 
     let bars = canvas.selectAll(".bar").data(parsed_data);
 
-    bars.enter().append("rect")
+    bars.enter().insert("rect", ".time-mask")
         .classed("bar", true)
         .merge(bars)
         .attr("x", d => context.x(d[0]))
@@ -229,6 +345,20 @@ function setup_step(name, data) {
 
     let x = d3.scaleTime().range([margin.left, width - margin.right]),
         y = d3.scaleLinear().range([height - margin.bottom, margin.top]);
+
+    canvas.append("rect")
+        .classed("time-mask", true)
+        .attr("x", width - margin.right)
+        .attr("y", margin.top - 5)
+        .attr("width", 0)
+        .attr("height", height - margin.top - margin.bottom + 5);
+
+    state.dispatcher.on(`control:step.${name} control:step-drag.${name}`, t => {
+        let xcoord = x(t);
+        canvas.select(".time-mask")
+            .attr("x", xcoord + 1)
+            .attr("width", width - margin.right - xcoord + 5);
+    });
 
     let ctx = { "x": x, "y": y, "height": height };
     draw_step(name, data, state, ctx);
@@ -258,7 +388,7 @@ function draw_step(name, data, state, context) {
         .curve(d3.curveStepAfter);
 
     let lines = canvas.selectAll(".line").data([parsed_data]);
-    lines.enter().append("path")
+    lines.enter().insert("path", ".time-mask")
         .classed("line", true)
         .merge(lines)
         .attr("d", line)
@@ -347,9 +477,9 @@ var state;
 function do_the_things() {
     state = {
         step: 0,
-        stepsize: 1,
+        stepsize: 500,
         timestamps: [],
-        dispatcher: d3.dispatch("time:filter", "control:step"),
+        dispatcher: d3.dispatch("time:filter", "control:step", "control:step-drag"),
         proc_id: new URL(window.location.href).searchParams.get("p"),
         data: {}
     };
@@ -381,7 +511,8 @@ function do_the_things() {
     });
 
     let t = fetch(`/proc/${state.proc_id}/timestamps`).then(response => response.json()).then(json => {
-        state.timestamps = json;
+        let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z')
+        state.timestamps = _.map(json, t => parse_time(t));
         state.step = state.timestamps.length - 1;
     });
 
@@ -389,18 +520,26 @@ function do_the_things() {
         state.tree = json;
     });
 
+    let int;
     $("#control #play").click(function() {
         $(this).attr("disabled", true);
         $("#control #pause").attr("disabled", false);
+        int = setInterval(() => {
+            $("#control #step-forward").trigger("click");
+        }, 1000);
     });
 
     $("#control #pause").click(function() {
         $(this).attr("disabled", true);
         $("#control #play").attr("disabled", false);
+        clearInterval(int);
     });
 
     $("#control #step-forward").click(function() {
         state.step += state.stepsize;
+        state.step = Math.min(state.step, state.timestamps.length - 1);
+
+        state.dispatcher.call("control:step", this, state.timestamps[state.step]);
 
         if(state.step >= state.timestamps.length - 1) {
             $(this).attr("disabled", true);
@@ -415,6 +554,9 @@ function do_the_things() {
     $("#control #step-backward").click(function() {
         console.log("stepped backward");
         state.step -= state.stepsize;
+        state.step = Math.max(0, state.step);
+
+        state.dispatcher.call("control:step", this, state.timestamps[state.step]);
 
         if(state.step === 0) {
             $(this).attr("disabled", true);
@@ -431,6 +573,8 @@ function do_the_things() {
         $("#control #step-forward").attr("disabled", false);
         $("#control #step-backward").attr("disabled", true);
         $("#control #to-end").attr("disabled", false);
+
+        state.dispatcher.call("control:step", this, state.timestamps[state.step]);
         $(this).attr("disabled", true);
     });
 
@@ -439,6 +583,8 @@ function do_the_things() {
         $("#control #step-forward").attr("disabled", true);
         $("#control #step-backward").attr("disabled", false);
         $("#control #to-start").attr("disabled", false);
+
+        state.dispatcher.call("control:step", this, state.timestamps[state.step]);
         $(this).attr("disabled", true);
     });
 
@@ -452,7 +598,7 @@ function do_the_things() {
         onShown: (tip) => {
             let template = `
               <div style="height: 600px; width: 500px; overflow-y: auto;">
-                <table id="example-basic-expandable">
+                <table class="treetable">
                   <tbody>
                     {{#nodes}}
                     <tr data-tt-id="{{id}}" data-tt-parent-id="{{parent}}">
@@ -471,7 +617,17 @@ function do_the_things() {
             });
 
             tip.setContent(rendered);
-            $("#example-basic-expandable").treetable({ expandable: true });
+            $(".treetable").treetable({ expandable: true });
+
+            $(".treetable tbody").off("click.select").on("click.select", "tr.leaf", function() {
+                let selected = $(this).hasClass("selected");
+                console.log(selected)
+                if(selected) {
+                    $(this).removeClass("selected");
+                } else {
+                    $(this).addClass("selected");
+                }
+            });
         },
         theme: "light-border"
     });

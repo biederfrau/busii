@@ -119,6 +119,13 @@ svg text {
     font-style: italic;
 }
 
+#scatter .point {
+    stroke: black;
+    stroke-width: 0.5;
+    transition: fill .4s ease;
+    transition: opacity .4s ease;
+}
+
 #scatter .point:hover {
     fill: #7A95D2;
     stroke: white;
@@ -129,6 +136,16 @@ svg text {
     opacity: 0.3;
 }
 
+#scatter .point.inactive {
+    fill: grey;
+    opacity: 0.5;
+}
+
 table {
     text-align: left !important;
+}
+
+.time-mask {
+    fill: #fefefa;
+    opacity: 0.95;
 }
