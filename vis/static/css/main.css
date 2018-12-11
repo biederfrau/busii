@@ -122,8 +122,8 @@ svg text {
 #scatter .point {
     stroke: black;
     stroke-width: 0.5;
-    transition: fill .4s ease;
-    transition: opacity .4s ease;
+    fill: #4863A0;
+    r: 4;
 }
 
 #scatter .point:hover {

@@ -32,64 +32,14 @@ function setup_scatter(state) {
     let drag = d3.drag().on('drag', () => {
         mouseX = mouseX || 0;
         mouseY = mouseY || 0;
-        if(d3.event.sourceEvent.buttons == 1) {
-            let beta = (d3.event.x - mx + mouseX) * Math.PI / 530,
-                alpha = (d3.event.y - my + mouseY) * Math.PI / 530;
 
-            d3point_proj.rotateY(beta + angle).rotateX(alpha - angle);
-            grid.rotateY(beta + angle).rotateX(alpha - angle);
+        let beta = (d3.event.x - mx + mouseX) * Math.PI / 530,
+            alpha = (d3.event.y - my + mouseY) * Math.PI / 530;
 
-            draw_scatter(state.data.cluster_coords, state, ctx);
-        } else if(d3.event.sourceEvent.buttons == 2) {
-            return;
-            // FIXME
-            canvas.selectAll(".point").attr("transform", function() {
-                this.x = this.x || 0;
-                this.y = this.y || 0;
+        d3point_proj.rotateY(beta + angle).rotateX(alpha - angle);
+        grid.rotateY(beta + angle).rotateX(alpha - angle);
 
-                let scale = "scale(1)";
-                if(d3.select(this).attr('transform')) {
-                    let split = d3.select(this).attr("transform").split(" ");
-                    if(split.length >= 2) {
-                        scale = split[1];
-                    }
-
-                    let translate = split[0].slice(10, -1).split(",");
-                    this.x = +translate[0];
-                    this.y = +translate[1];
-                }
-
-                this.x += d3.event.dx;
-                this.y += d3.event.dy;
-
-                return "translate(" + [this.x, this.y] + ") " + scale;
-            });
-
-            canvas.selectAll(".grid").attr("transform", function() {
-                this.x = this.x || 0;
-                this.y = this.y || 0;
-
-                let scale = "scale(1)";
-                if(d3.select(this).attr('transform')) {
-                    let split = d3.select(this).attr("transform").split(" ");
-                    if(split.length >= 2) {
-                        scale = split[1];
-                    }
-
-                    let translate = split[0].slice(10, -1).split(",");
-                    this.x = +translate[0];
-                    this.y = +translate[1];
-                }
-
-                this.x += d3.event.dx;
-                this.y += d3.event.dy;
-
-                this.x += d3.event.dx;
-                this.y += d3.event.dy;
-
-                return "translate(" + [this.x, this.y] + ")";
-            });
-        }
+        draw_scatter(state.data.cluster_coords, state, ctx);
     }).on('start', () => {
         mx = d3.event.x;
         my = d3.event.y;
@@ -163,10 +113,12 @@ function draw_scatter(data, state, context) {
         .classed("point", true)
         .classed("_3d", true)
         .merge(points)
-        .attr("cx", d => d.projected.x)
+        .classed("inactive", d => {
+            let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%f%Z')
+            let time = parse_time(d[3]), cur_time = state.timestamps[state.step];
+            return time >= cur_time;
+        }).attr("cx", d => d.projected.x)
         .attr("cy", d => d.projected.y)
-        .attr("fill", "#4863A0")
-        .attr("r", 4)
         .attr("data-tippy-content", (d, i) => `${_.round(d[0], 3)}, ${_.round(d[1], 3)}, ${_.round(d[2], 3)} (${data[i].points.length})`)
         .on("mouseover", function() { d3.select(this).raise(); })
         .on("click", function(d, i) {
@@ -232,6 +184,8 @@ function setup_activity(state) {
         state.dispatcher.call("control:step", this, state.timestamps[step]);
     });
     time_line.call(drag);
+
+    canvas.on('click', drag.on('end'));
 
     let ctx = { "x": x, "y": y, "height": height };
     draw_activity(state.data.activity, state, ctx);
