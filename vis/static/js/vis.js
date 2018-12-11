@@ -428,8 +428,27 @@ function setup_time(state) {
 
             canvas.append("g").classed(`group-${i}-${j}`, true).attr("transform", "translate(" + [left, down - height_rows] + ")");
             axes[i].push({ "x": x, "y": y });
+
+            canvas.append("rect")
+                .classed("time-mask", true)
+                .classed(`mask-${i}-${j}`, true)
+                .attr("x", left + width_cols)
+                .attr("y", down - height_rows)
+                .attr("height", height_rows);
         }
     }
+
+    state.dispatcher.on("control:step.time control:step-drag.time", t => {
+        for(let i = 0; i < 3; ++i) {
+            for(let j = 0; j < 3; ++j) {
+                let left = margin.left + i*(width_cols + gutter_x);
+                let xcoord = axes[i][j].x(t);
+                canvas.select(`.mask-${i}-${j}`)
+                    .attr("x", left + xcoord + 1)
+                    .attr("width", Math.max(width_cols - xcoord, 0)); // FIXME
+            }
+        }
+    });
 
     let ctx = { "axes": axes };
     draw_time(state.data.timeseries, state, ctx);
@@ -478,6 +497,7 @@ function do_the_things() {
     state = {
         step: 0,
         stepsize: 500,
+        interval: 1000,
         timestamps: [],
         dispatcher: d3.dispatch("time:filter", "control:step", "control:step-drag"),
         proc_id: new URL(window.location.href).searchParams.get("p"),
@@ -526,7 +546,7 @@ function do_the_things() {
         $("#control #pause").attr("disabled", false);
         int = setInterval(() => {
             $("#control #step-forward").trigger("click");
-        }, 1000);
+        }, state.interval);
     });
 
     $("#control #pause").click(function() {
@@ -631,4 +651,32 @@ function do_the_things() {
         },
         theme: "light-border"
     });
+
+    tippy("#control #settings", {
+        trigger: "click",
+        arrow: true,
+        interactive: true,
+        content: "loading...",
+        size: "large",
+        maxWidth: "800px",
+        onShown: (tip) => {
+            let template = $("template#settings-template").html();
+            Mustache.parse(template);
+
+            let rendered = Mustache.render(template, {
+                stepsize: state.stepsize,
+                interval: state.interval
+            });
+
+            tip.setContent(rendered);
+        },
+        theme: "light-border",
+        onHide: () => {
+            let stepsize = +$("input#stepsize").val(),
+                interval = +$("input#interval").val();
+
+            state.stepsize = stepsize;
+            state.interval = interval;
+        }
+    })
 }

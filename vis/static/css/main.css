@@ -147,5 +147,12 @@ table {
 
 .time-mask {
     fill: #fefefa;
-    opacity: 0.95;
+    opacity: 0.93;
+}
+
+label {
+    display: inline-block;
+    width: 87px;
+    text-align: right;
+    margin-right: 5px;
 }
