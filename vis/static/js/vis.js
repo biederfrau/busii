@@ -115,8 +115,8 @@ function draw_scatter(data, state, context) {
         .merge(points)
         .classed("inactive", d => {
             let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%f%Z')
-            let time = parse_time(d[3]), cur_time = state.timestamps[state.step];
-            return time >= cur_time;
+            let time = parse_time(d[3]);
+            return time >= state.step;
         }).attr("cx", d => d.projected.x)
         .attr("cy", d => d.projected.y)
         .attr("data-tippy-content", (d, i) => `${_.round(d[0], 3)}, ${_.round(d[1], 3)}, ${_.round(d[2], 3)} (${data[i].points.length})`)
@@ -155,19 +155,13 @@ function setup_activity(state) {
     let time_line = canvas.append("line")
         .classed("time-line", true)
         .attr("x1", width - margin.right)
-        .attr("y1", height - margin.bottom + 12)
+        .attr("y1", height - margin.bottom + 13)
         .attr("x2", width - margin.right)
         .attr("y2", margin.top - 10)
-        .attr("stroke", "black")
-        .attr("stroke-width", 2)
-        .attr("stroke-dasharray", 8);
-
-    // let handle_size = 4, handle = canvas.append("rect")
-        // .classed("handle", true)
-        // .attr("x", width - margin.right - handle_size/2)
-        // .attr("y", margin.top - handle_size/2 - 10)
-        // .attr("height", handle_size)
-        // .attr("width", handle_size);
+        .attr("stroke", "grey")
+        .attr("stroke-width", 4)
+        .attr("stroke-dasharray", 0)
+        .style("opacity", 0.8);
 
     let drag = d3.drag().on('drag', () => {
         if(d3.event.x <= margin.left || d3.event.x >= width - margin.right) { return; }
@@ -177,14 +171,13 @@ function setup_activity(state) {
         state.dispatcher.call("control:step-drag", this, time);
     }).on('end', () => {
         let time = x.invert(d3.event.x);
-        let step = _.findIndex(state.timestamps, t => t >= time);
-        if(step === -1) { step = state.timestamps.length - 1; }
-        state.step = step;
-        time_line.attr("x1", x(state.timestamps[step])).attr("x2", x(state.timestamps[step]));
-        state.dispatcher.call("control:step", this, state.timestamps[step]);
-    });
-    time_line.call(drag);
+        time_line.attr("x1", x(time)).attr("x2", x(time));
 
+        state.step = time;
+        state.dispatcher.call("control:step", this, time);
+    });
+
+    time_line.call(drag);
     canvas.on('click', drag.on('end'));
 
     let ctx = { "x": x, "y": y, "height": height };
@@ -449,9 +442,8 @@ function draw_time(data, state, context) {
 var state;
 function do_the_things() {
     state = {
-        step: 0,
-        stepsize: 500,
-        interval: 1000,
+        stepsize: 60,
+        interval: 1,
         timestamps: [],
         dispatcher: d3.dispatch("time:filter", "control:step", "control:step-drag"),
         proc_id: new URL(window.location.href).searchParams.get("p"),
@@ -487,7 +479,7 @@ function do_the_things() {
     let t = fetch(`/proc/${state.proc_id}/timestamps`).then(response => response.json()).then(json => {
         let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z')
         state.timestamps = _.map(json, t => parse_time(t));
-        state.step = state.timestamps.length - 1;
+        state.step = _.last(state.timestamps);
     });
 
     let u = fetch(`/tree`).then(response => response.json()).then(json => {
@@ -499,7 +491,7 @@ function do_the_things() {
         $(this).attr("disabled", true);
         $("#control #pause").attr("disabled", false);
         int = setInterval(() => {
-            $("#control #step-forward").trigger("click");
+            $("#control #step-forward").triggerHandler("click");
         }, state.interval);
     });
 
@@ -510,57 +502,43 @@ function do_the_things() {
     });
 
     $("#control #step-forward").click(function() {
-        state.step += state.stepsize;
-        state.step = Math.min(state.step, state.timestamps.length - 1);
+        state.step = utils.addSeconds(state.step, state.stepsize);
+        state.step = _.min([state.step, _.last(state.timestamps)]);
 
-        state.dispatcher.call("control:step", this, state.timestamps[state.step]);
-
-        if(state.step >= state.timestamps.length - 1) {
-            $(this).attr("disabled", true);
-            $("#control #to-end").attr("disabled", true);
-            return;
-        }
-
-        $("#control #step-backward").attr("disabled", false);
-        $("#control #to-start").attr("disabled", false);
+        state.dispatcher.call("control:step", this, state.step);
     });
 
     $("#control #step-backward").click(function() {
-        console.log("stepped backward");
-        state.step -= state.stepsize;
-        state.step = Math.max(0, state.step);
+        state.step = utils.substractSeconds(state.step, state.stepsize);
+        state.step = _.max([_.first(state.timestamps), state.step]);
 
-        state.dispatcher.call("control:step", this, state.timestamps[state.step]);
-
-        if(state.step === 0) {
-            $(this).attr("disabled", true);
-            $("#control #to-start").attr("disabled", true);
-            return;
-        }
-
-        $("#control #step-forward").attr("disabled", false);
-        $("#control #to-end").attr("disabled", false);
+        state.dispatcher.call("control:step", this, state.step);
     });
 
     $("#control #to-start").click(function() {
-        state.step = 0;
-        $("#control #step-forward").attr("disabled", false);
-        $("#control #step-backward").attr("disabled", true);
-        $("#control #to-end").attr("disabled", false);
-
-        state.dispatcher.call("control:step", this, state.timestamps[state.step]);
-        $(this).attr("disabled", true);
+        state.step = _.first(state.timestamps);
+        state.dispatcher.call("control:step", this, state.step);
     });
 
     $("#control #to-end").click(function() {
-        state.step = state.timestamps.length - 1;
-        $("#control #step-forward").attr("disabled", true);
+        state.step = _.last(state.timestamps);
+        state.dispatcher.call("control:step", this, state.step);
+    });
+
+    state.dispatcher.on("control:step.buttons control:step-drag", t => {
+        $("#control #step-forward").attr("disabled", false);
+        $("#control #to-end").attr("disabled", false);
         $("#control #step-backward").attr("disabled", false);
         $("#control #to-start").attr("disabled", false);
 
-        state.dispatcher.call("control:step", this, state.timestamps[state.step]);
-        $(this).attr("disabled", true);
-    });
+        if(t >= _.last(state.timestamps)) {
+            $("#control #step-forward").attr("disabled", true);
+            $("#control #to-end").attr("disabled", true);
+        } else if(t <= _.first(state.timestamps)) {
+            $("#control #step-backward").attr("disabled", true);
+            $("#control #to-start").attr("disabled", true);
+        }
+    })
 
     tippy("#control #select", {
         trigger: "click",
@@ -571,7 +549,7 @@ function do_the_things() {
         maxWidth: "800px",
         onShown: (tip) => {
             let template = `
-              <div style="height: 600px; width: 500px; overflow-y: auto;">
+              <div style="height: 500px; width: 500px; overflow-y: auto;">
                 <table class="treetable">
                   <tbody>
                     {{#nodes}}
@@ -581,6 +559,15 @@ function do_the_things() {
                     {{/nodes}}
                   </tbody>
                 </table>
+              </div>
+              <div id="process-select" style="margin-top: 0.5em">
+                <label for="procselection">primary process: &nbsp;</span>
+                <select name="procselection" id="procselection" style="width: 370px">
+                  <option value="a">a</option>
+                  <option value="b">b</option>
+                  <option value="c">c</option>
+                  <option value="d">d</option>
+                </select>
               </div>
             `;
 
@@ -595,7 +582,6 @@ function do_the_things() {
 
             $(".treetable tbody").off("click.select").on("click.select", "tr.leaf", function() {
                 let selected = $(this).hasClass("selected");
-                console.log(selected)
                 if(selected) {
                     $(this).removeClass("selected");
                 } else {
@@ -612,7 +598,7 @@ function do_the_things() {
         interactive: true,
         content: "loading...",
         size: "large",
-        maxWidth: "800px",
+        maxWidth: "400px",
         onShown: (tip) => {
             let template = $("template#settings-template").html();
             Mustache.parse(template);
@@ -622,15 +608,18 @@ function do_the_things() {
                 interval: state.interval
             });
 
+            $("input#stepsize").change(function() {
+                let stepsize = +$("input#stepsize").val();
+                state.stepsize = stepsize;
+            });
+
+            $("input#interval").change(function() {
+                let interval = +$("input#interval").val() * 1000;
+                state.interval = interval;
+            });
+
             tip.setContent(rendered);
         },
         theme: "light-border",
-        onHide: () => {
-            let stepsize = +$("input#stepsize").val(),
-                interval = +$("input#interval").val();
-
-            state.stepsize = stepsize;
-            state.interval = interval;
-        }
     })
 }
