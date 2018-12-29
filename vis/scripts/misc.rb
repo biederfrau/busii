@@ -11,30 +11,30 @@ f = ARGV.first
 h = {}
 
 events = extract_and_clean_machine_receives(f).flatten
-a, b = events[0][:timestamp], events[-1][:timestamp]
+a, b = events[0][:server_timestamp], events[-1][:server_timestamp]
 
-idents = events.select { |ev| ev[:name].end_with? 'actToolIdent' }.sort_by { |ev| ev[:timestamp] }
-lengths = events.select { |ev| ev[:name].end_with? 'actToolLength1' }.sort_by { |ev| ev[:timestamp] }
-radiuses = events.select { |ev| ev[:name].end_with? 'actToolRadius' }.sort_by { |ev| ev[:timestamp] }
-feed_rate = events.select { |ev| ev[:name].end_with? 'feedRateOvr' }.sort_by { |ev| ev[:timestamp] }
+idents = events.select { |ev| ev[:name].end_with? 'actToolIdent' }.sort_by { |ev| ev[:server_timestamp] }
+lengths = events.select { |ev| ev[:name].end_with? 'actToolLength1' }.sort_by { |ev| ev[:server_timestamp] }
+radiuses = events.select { |ev| ev[:name].end_with? 'actToolRadius' }.sort_by { |ev| ev[:server_timestamp] }
+feed_rate = events.select { |ev| ev[:name].end_with? 'feedRateOvr' }.sort_by { |ev| ev[:server_timestamp] }
 
 if idents.size == 1 then
   idents = [[a.iso8601(3), b.iso8601(3), idents[0][:value]]]
 else
   idents_ = idents
   idents = idents.each_cons(2).map do |t, u|
-    [t[:timestamp].iso8601(3), u[:timestamp].iso8601(3), t[:value]]
+    [t[:server_timestamp].iso8601(3), u[:server_timestamp].iso8601(3), t[:value]]
   end
 
-  idents.unshift([a.iso8601(3), idents_[0][:timestamp].iso8601(3), idents_[0][:value]])
-  idents << [idents_[-1][:timestamp].iso8601(3), b.iso8601(3), idents_[-1][:value]]
+  idents.unshift([a.iso8601(3), idents_[0][:server_timestamp].iso8601(3), idents_[0][:value]])
+  idents << [idents_[-1][:server_timestamp].iso8601(3), b.iso8601(3), idents_[-1][:value]]
 end
 
 h = {
   'actToolIdent': idents,
-  'actToolLength1': lengths.map { |ev| [ev[:timestamp].iso8601(3), ev[:value]] },
-  'actToolRadius': radiuses.map { |ev| [ev[:timestamp].iso8601(3), ev[:value]] },
-  'feedRateOvr': feed_rate.map { |ev| [ev[:timestamp].iso8601(3), ev[:value]] }
+  'actToolLength1': lengths.map { |ev| [ev[:server_timestamp].iso8601(3), ev[:value]] },
+  'actToolRadius': radiuses.map { |ev| [ev[:server_timestamp].iso8601(3), ev[:value]] },
+  'feedRateOvr': feed_rate.map { |ev| [ev[:server_timestamp].iso8601(3), ev[:value]] }
 }
 
 h[:actToolLength1].unshift [a.iso8601(3), h[:actToolLength1][0][1]]
