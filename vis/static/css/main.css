@@ -139,6 +139,7 @@ svg text {
 #scatter .point.inactive {
     fill: grey;
     opacity: 0.5;
+    display: none;
 }
 
 table {
@@ -150,9 +151,9 @@ table {
     opacity: 0.93;
 }
 
-label {
+form label {
     display: inline-block;
-    width: 87px;
+    width: 125px;
     text-align: right;
     margin-right: 5px;
 }
