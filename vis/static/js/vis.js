@@ -1,5 +1,5 @@
 function setup_scatter(state) {
-    let style = window.getComputedStyle(document.getElementById('activity')),
+    let style = window.getComputedStyle(document.getElementById('scatter')),
         margin = {top: 20, right: 20, bottom: 23, left: 37},
         width = parseFloat(style.width),
         height = parseFloat(style.height),
@@ -76,15 +76,26 @@ function setup_scatter(state) {
         });
     });
 
+    state.dispatcher.on("data:change.scatter", () => {
+        console.log(state.data)
+        draw_scatter(state.data.cluster_coords, state, ctx);
+    });
+
     draw_scatter(state.data.cluster_coords, state, ctx);
 }
 
 function draw_scatter(data, state, context) {
-    let style = window.getComputedStyle(document.getElementById('activity')),
+    let style = window.getComputedStyle(document.getElementById('scatter')),
         margin = {top: 20, right: 20, bottom: 23, left: 37},
         width = parseFloat(style.width),
         height = parseFloat(style.height),
         canvas = d3.select("#scatter");
+
+    if(!data) {
+        utils.noData(canvas, width, height);
+        return;
+    }
+    canvas.selectAll(".no-data").remove();
 
     let grid_points = [];
     for(let x = -400; x < 400; x += 20) {
@@ -161,16 +172,22 @@ function setup_activity(state) {
         .attr("stroke", "grey")
         .attr("stroke-width", 4)
         .attr("stroke-dasharray", 0)
-        .style("opacity", 0.8);
+        .style("opacity", 0.8)
+        .style("display", "none");
 
     let drag = d3.drag().on('drag', () => {
         if(d3.event.x <= margin.left || d3.event.x >= width - margin.right) { return; }
         time_line.attr("x1", d3.event.x).attr("x2", d3.event.x);
 
         let time = x.invert(d3.event.x);
+        time = _.max([_.first(state.timestamps), time]);
+        time = _.min([_.last(state.timestamps), time]);
+
         state.dispatcher.call("control:step-drag", this, time);
     }).on('end', () => {
         let time = x.invert(d3.event.x);
+        time = _.max([_.first(state.timestamps), time]);
+        time = _.min([_.last(state.timestamps), time]);
         time_line.attr("x1", x(time)).attr("x2", x(time));
 
         state.step = time;
@@ -180,13 +197,26 @@ function setup_activity(state) {
     time_line.call(drag);
     canvas.on('click', drag.on('end'));
 
-    let ctx = { "x": x, "y": y, "height": height };
+    let ctx = { "x": x, "y": y };
+    state.dispatcher.on("data:change.activity", () => {
+        draw_activity(state.data.activity, state, ctx);
+    });
+
     draw_activity(state.data.activity, state, ctx);
 }
 
 function draw_activity(data, state, context) {
     let canvas = d3.select("#activity"),
-        style = window.getComputedStyle(document.getElementById('activity'));
+        style = window.getComputedStyle(document.getElementById('activity'))
+        width = parseFloat(style.width),
+        height = parseFloat(style.height);
+
+    if(!data) {
+        utils.noData(canvas, width, height);
+        return;
+    }
+    canvas.selectAll(".no-data").remove();
+    canvas.select(".time-line").style("display", undefined);
 
     let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z'),
         parsed_data = _.map(data.sections, x => [parse_time(x[0]), parse_time(x[1])]);
@@ -212,18 +242,18 @@ function draw_activity(data, state, context) {
 }
 
 function setup_misc(state) {
-    _.each(state.data.misc, (data, name) => {
+    _.each(state.misc_keys, name => {
         if(name == 'actToolIdent') {
-            setup_gantt(name, data);
+            setup_gantt(name);
         } else {
-            setup_step(name, data);
+            setup_step(name);
         }
     });
 }
 
 function setup_gantt(name, data) {
     let style = window.getComputedStyle(document.getElementById(name + '-svg')),
-        margin = {top: 20, right: 20, bottom: 23, left: 100},
+        margin = {top: 30, right: 20, bottom: 23, left: 100},
         width = parseFloat(style.width),
         height = parseFloat(style.height),
         canvas = d3.select("#" + name + '-svg');
@@ -248,12 +278,26 @@ function setup_gantt(name, data) {
             .attr("width", width - margin.right - xcoord);
     });
 
-    let ctx = { "x": x, "y": y, "height": height };
+    let ctx = { "x": x, "y": y };
+    state.dispatcher.on(`data:change.${name}`, () => {
+        draw_gantt(name, state.data.misc[name], state, ctx);
+    });
+
     draw_gantt(name, data, state, ctx);
 }
 
 function draw_gantt(name, data, state, context) {
-    let canvas = d3.select("#" + name + '-svg');
+    let style = window.getComputedStyle(document.getElementById(name + '-svg')),
+        margin = {top: 20, right: 20, bottom: 23, left: 100},
+        width = parseFloat(style.width),
+        height = parseFloat(style.height),
+        canvas = d3.select("#" + name + '-svg');
+
+    if(!data) {
+        utils.noData(canvas, width, height);
+        return;
+    }
+    canvas.selectAll(".no-data").remove();
 
     let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z'),
         parsed_data = _.map(data, x => [parse_time(x[0]), parse_time(x[1]), x[2]]);
@@ -308,11 +352,25 @@ function setup_step(name, data) {
     });
 
     let ctx = { "x": x, "y": y, "height": height };
+
+    state.dispatcher.on(`data:change.${name}`, () => {
+        draw_step(name, state.data.misc[name], state, ctx);
+    });
+
     draw_step(name, data, state, ctx);
 }
 
 function draw_step(name, data, state, context) {
-    let canvas = d3.select("#" + name + '-svg');
+    let style = window.getComputedStyle(document.getElementById('actToolIdent-svg')), // XXX non-hidden one
+        width = parseFloat(style.width),
+        height = parseFloat(style.height),
+        canvas = d3.select("#" + name + '-svg');
+
+    if(!data) {
+        utils.noData(canvas, width, height);
+        return;
+    }
+    canvas.selectAll(".no-data").remove();
 
     let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z'),
         parsed_data = _.map(data, x => [parse_time(x[0]), x[1]]);
@@ -357,12 +415,6 @@ function setup_time(state) {
     let axes = [];
     for(let i = 0; i < 3; ++i) {
         axes.push([]);
-        canvas.append("text").text(Object.keys(state.data.timeseries)[i])
-            .attr("x", margin.left + i*(width_cols + gutter_x) + width_cols/2)
-            .attr("y", 20)
-            .attr("text-anchor", "middle")
-            .classed("title-text", true);
-
         for(let j = 0; j < 3; ++j) {
             let left = margin.left + i*(width_cols + gutter_x),
                 down = margin.top + j*(height_rows + gutter_y) + height_rows;
@@ -391,20 +443,36 @@ function setup_time(state) {
                 let left = margin.left + i*(width_cols + gutter_x);
                 let xcoord = axes[i][j].x(t);
                 canvas.select(`.mask-${i}-${j}`)
-                    .attr("x", left + xcoord + 1)
+                    .attr("x", left + Math.max(xcoord, 0) + 1)
                     .attr("width", Math.max(width_cols - xcoord, 0)); // FIXME
             }
         }
     });
 
-    let ctx = { "axes": axes };
+    let ctx = { "axes": axes, "width_cols": width_cols, "height_rows": height_rows, "gutter_x": gutter_x, "gutter_y": gutter_y };
+
+    state.dispatcher.on("data:change.time", () => {
+        draw_time(state.data.timeseries, state, ctx);
+    });
+
     draw_time(state.data.timeseries, state, ctx);
 }
 
 function draw_time(data, state, context) {
     let canvas = d3.select("#time"),
-        parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z'),
-        keys_i = _.map(data, (_, k) => k), keys_j = ['X', 'Y', 'Z'];
+        style = window.getComputedStyle(document.getElementById('time')),
+        margin = {top: 40, right: 30, bottom: 30, left: 60},
+        width = parseFloat(style.width),
+        height = parseFloat(style.height),
+        parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z');
+
+    if(!data) {
+        utils.noData(canvas, width, height);
+        return;
+    }
+    canvas.selectAll(".no-data").remove();
+
+    let keys_i = _.map(data, (_, k) => k), keys_j = ['X', 'Y', 'Z'];
 
     let colors = {
         'aaVactB': "#2B65EC",
@@ -413,6 +481,14 @@ function draw_time(data, state, context) {
     };
 
     for(let i = 0; i < 3; ++i) {
+        if(canvas.select(".title-text").empty()) {
+            canvas.append("text").text(keys_i[i])
+                .attr("x", margin.left + i*(context.width_cols + context.gutter_x) + context.width_cols/2)
+                .attr("y", 20)
+                .attr("text-anchor", "middle")
+                .classed("title-text", true);
+        }
+
         for(let j = 0; j < 3; ++j) {
             let cur_data = data[keys_i[i]][keys_j[j]];
             let parsed_data = _.map(cur_data, x => [parse_time(x[0]), x[1]]);
@@ -439,14 +515,56 @@ function draw_time(data, state, context) {
     }
 }
 
+function fetch_data(primary, others) {
+    let p = fetch(`/proc/${primary}/activities`).then(response => response.json()).then(json => {
+        state.data.activity = json;
+    }).catch(() => {
+        console.log("activity fetch failed");
+        delete state.data.activity;
+    });
+
+    let q = fetch(`/proc/${primary}/cluster_coords`).then(response => response.json()).then(json => {
+        state.data.cluster_coords = json;
+    }).catch(() => {
+        console.log("cluster coords fetch failed");
+        delete state.data.cluster_coords;
+    });
+
+    let r = fetch(`/proc/${primary}/misc`).then(response => response.json()).then(json => {
+        state.data.misc = json;
+    }).catch(() => {
+        console.log("misc fetch failed");
+        delete state.data.misc;
+    });
+
+    let s = fetch(`/proc/${primary}/timeseries`).then(response => response.json()).then(json => {
+        state.data.timeseries = json;
+    }).catch(() => {
+        console.log("timeseries fetch failed");
+        delete state.data.timeseries;
+    });
+
+    let t = fetch(`/proc/${primary}/timestamps`).then(response => response.json()).then(json => {
+        let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z')
+        state.timestamps = _.map(json, t => parse_time(t));
+        state.step = _.last(state.timestamps);
+    }).catch(() => {
+        console.log("timestamp fetch failed");
+        delete state.data.timeseries;
+    });
+
+    return [p, q, r, s, t];
+}
+
 var state;
 function do_the_things() {
     state = {
         stepsize: 60,
         interval: 1,
         timestamps: [],
-        dispatcher: d3.dispatch("time:filter", "control:step", "control:step-drag"),
+        dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change"),
         proc_id: new URL(window.location.href).searchParams.get("p"),
+        misc_keys: ['actToolIdent', 'actToolLength1', 'actToolRadius', 'feedRateOvr'],
         data: {}
     };
 
@@ -454,33 +572,11 @@ function do_the_things() {
         alert("error p query param not set");
     }
 
-    let p = fetch(`/proc/${state.proc_id}/activities`).then(response => response.json()).then(json => {
-        state.data.activity = json;
-        setup_activity(state);
-    });
-
-    let q = fetch(`/proc/${state.proc_id}/cluster_coords`).then(response => response.json()).then(json => {
-        state.data.cluster_coords = json;
-        setup_scatter(state);
-    });
-
-    let r = fetch(`/proc/${state.proc_id}/misc`).then(response => response.json()).then(json => {
-        spawn_tabs(Object.keys(json));
-
-        state.data.misc = json;
-        setup_misc(state);
-    });
-
-    let s = fetch(`/proc/${state.proc_id}/timeseries`).then(response => response.json()).then(json => {
-        state.data.timeseries = json;
-        setup_time(state);
-    });
-
-    let t = fetch(`/proc/${state.proc_id}/timestamps`).then(response => response.json()).then(json => {
-        let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z')
-        state.timestamps = _.map(json, t => parse_time(t));
-        state.step = _.last(state.timestamps);
-    });
+    setup_scatter(state);
+    setup_activity(state);
+    spawn_tabs(state.misc_keys);
+    setup_misc(state);
+    setup_time(state);
 
     let u = fetch(`/tree`).then(response => response.json()).then(json => {
         state.tree = json;
@@ -492,7 +588,7 @@ function do_the_things() {
         $("#control #pause").attr("disabled", false);
         int = setInterval(() => {
             $("#control #step-forward").triggerHandler("click");
-        }, state.interval);
+        }, 1000*state.interval);
     });
 
     $("#control #pause").click(function() {
@@ -563,10 +659,6 @@ function do_the_things() {
               <div id="process-select" style="margin-top: 0.5em">
                 <label for="procselection">primary process: &nbsp;</span>
                 <select name="procselection" id="procselection" style="width: 370px">
-                  <option value="a">a</option>
-                  <option value="b">b</option>
-                  <option value="c">c</option>
-                  <option value="d">d</option>
                 </select>
               </div>
             `;
@@ -581,12 +673,25 @@ function do_the_things() {
             $(".treetable").treetable({ expandable: true });
 
             $(".treetable tbody").off("click.select").on("click.select", "tr.leaf", function() {
-                let selected = $(this).hasClass("selected");
-                if(selected) {
-                    $(this).removeClass("selected");
+                let pid = $(this).data('tt-id');
+                $(this).toggleClass("selected");
+                if($(this).hasClass("selected")) {
+                    $("#procselection").append($(`<option value="${pid}">${pid}</option>`));
                 } else {
-                    $(this).addClass("selected");
+                    $(`#procselection option[value="${pid}"]`).remove();
                 }
+            });
+        },
+        onHide: (tip) => {
+            let selected = _.map($(".treetable tr.leaf.selected"), e => $(e).data('tt-id'));
+            let primary = +$("#procselection").val();
+            let other = _.difference(selected, [primary]);
+
+            let promises = fetch_data(primary);
+            Promise.all(promises).then(() => {
+                state.dispatcher.call("data:change");
+                state.step = _.last(state.timestamps);
+                state.dispatcher.call("control:step", this, state.step);
             });
         },
         theme: "light-border"
@@ -614,7 +719,7 @@ function do_the_things() {
             });
 
             $("input#interval").change(function() {
-                let interval = +$("input#interval").val() * 1000;
+                let interval = +$("input#interval").val();
                 state.interval = interval;
             });
 
