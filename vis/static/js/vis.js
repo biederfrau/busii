@@ -481,7 +481,7 @@ function draw_time(data, state, context) {
     };
 
     for(let i = 0; i < 3; ++i) {
-        if(canvas.select(".title-text").empty()) {
+        if(canvas.selectAll(".title-text").size() < 3) {
             canvas.append("text").text(keys_i[i])
                 .attr("x", margin.left + i*(context.width_cols + context.gutter_x) + context.width_cols/2)
                 .attr("y", 20)

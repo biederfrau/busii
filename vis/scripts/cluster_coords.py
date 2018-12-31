@@ -41,8 +41,11 @@ data = pd.read_csv(sys.argv[1])
 points = data[["X", "Y", "Z"]].values
 n = min(600, len(data))
 
-clustering = sklearn.cluster.KMeans(n_clusters=n).fit(points)
-centroids = clustering.cluster_centers_
+try:
+    clustering = sklearn.cluster.KMeans(n_clusters=n).fit(points)
+    centroids = clustering.cluster_centers_
+except:
+    centroids = []
 
 assignments = assign(centroids, points)
 clusters = [{ "centroid": list(c), "points": [], "times": [] } for c in centroids]
@@ -54,8 +57,5 @@ for point, cluster, time in zip(points, assignments, data["T"]):
 for idx, cluster in enumerate(clusters):
     clusters[idx]["min_time"] = min(cluster["times"])
 
-proc_id = Path(sys.argv[1]).stem
-path = f"../data/{proc_id}/"
-Path(path).mkdir(parents=True, exist_ok=True)
-
-json.dump(clusters, fp=open(path + '/cluster_coords.json', 'w+'), default=json_serial)
+path = Path(sys.argv[1]).parent
+json.dump(clusters, fp=open(f"{path}/cluster_coords.json", 'w+'), default=json_serial)

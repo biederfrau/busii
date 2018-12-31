@@ -38,5 +38,4 @@ end
 _, last_b = h[:sections].last
 h[:sections] << [events.last[:server_timestamp].iso8601(3), (events.last[:server_timestamp] + 0.5).iso8601(3)] unless last_b == events.last[:server_timestamp].iso8601(3)
 
-pp h
 File.write File.join('..', 'data', p, 'activities.json'), JSON::generate(h)

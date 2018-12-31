@@ -20,7 +20,7 @@ feed_rate = events.select { |ev| ev[:name].end_with? 'feedRateOvr' }.sort_by { |
 
 if idents.size == 1 then
   idents = [[a.iso8601(3), b.iso8601(3), idents[0][:value]]]
-else
+elsif idents.size > 1 then
   idents_ = idents
   idents = idents.each_cons(2).map do |t, u|
     [t[:server_timestamp].iso8601(3), u[:server_timestamp].iso8601(3), t[:value]]
@@ -37,14 +37,20 @@ h = {
   'feedRateOvr': feed_rate.map { |ev| [ev[:server_timestamp].iso8601(3), ev[:value]] }
 }
 
-h[:actToolLength1].unshift [a.iso8601(3), h[:actToolLength1][0][1]]
-h[:actToolLength1] << [b.iso8601(3), h[:actToolLength1][-1][1]]
+if lengths.size > 1 then
+  h[:actToolLength1].unshift [a.iso8601(3), h[:actToolLength1][0][1]]
+  h[:actToolLength1] << [b.iso8601(3), h[:actToolLength1][-1][1]]
+end
 
-h[:actToolRadius].unshift [a.iso8601(3), h[:actToolRadius][0][1]]
-h[:actToolRadius] << [b.iso8601(3), h[:actToolRadius][-1][1]]
+if radiuses.size > 1 then
+  h[:actToolRadius].unshift [a.iso8601(3), h[:actToolRadius][0][1]]
+  h[:actToolRadius] << [b.iso8601(3), h[:actToolRadius][-1][1]]
+end
 
-h[:feedRateOvr].unshift [a.iso8601(3), h[:feedRateOvr][0][1]]
-h[:feedRateOvr] << [b.iso8601(3), h[:feedRateOvr][-1][1]]
+if feed_rate.size > 1 then
+  h[:feedRateOvr].unshift [a.iso8601(3), h[:feedRateOvr][0][1]]
+  h[:feedRateOvr] << [b.iso8601(3), h[:feedRateOvr][-1][1]]
+end
 
 p = File.basename f, '.xes.yaml'
 path = File.join '..', 'data', p
