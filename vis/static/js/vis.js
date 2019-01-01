@@ -77,7 +77,6 @@ function setup_scatter(state) {
     });
 
     state.dispatcher.on("data:change.scatter", () => {
-        console.log(state.data)
         draw_scatter(state.data.cluster_coords, state, ctx);
     });
 
@@ -218,25 +217,33 @@ function draw_activity(data, state, context) {
     canvas.selectAll(".no-data").remove();
     canvas.select(".time-line").style("display", undefined);
 
-    let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z'),
-        parsed_data = _.map(data.sections, x => [parse_time(x[0]), parse_time(x[1])]);
+    let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z');
 
-    context.x.domain([parsed_data[0][0], _.last(parsed_data)[1]]);
-    context.y.domain([state.proc_id]);
+    let vs = _.map(data, (v, k) => v);
+    _.each(vs, v => {
+        v.sections = _.map(v.sections, x => [parse_time(x[0]), parse_time(x[1])]);
+    });
+
+    context.x.domain(d3.extent(_.flatMap(vs, v => _.flatten(v.sections))));
+    context.y.domain(Object.keys(data));
 
     canvas.select(".xaxis").call(d3.axisBottom(context.x));
     canvas.select(".yaxis").call(d3.axisLeft(context.y));
 
-    let bars = canvas.selectAll(".bar").data(parsed_data);
+    let sections = _.flatMap(vs, v => _.flatMap(v.sections, s => {
+        return { 'color': v.color, 'id': v.id, 'section': s }
+    }));
+
+    let bars = canvas.selectAll(".bar").data(sections);
 
     bars.enter().insert("rect", ".time-line")
         .classed("bar", true)
         .merge(bars)
-        .attr("x", d => context.x(d[0]))
-        .attr("y", d => context.y(state.proc_id))
+        .attr("x", d => context.x(d.section[0]))
+        .attr("y", d => context.y(d.id))
         .attr("height", context.y.bandwidth())
-        .attr("width", d => context.x(d[1]) - context.x(d[0]))
-        .attr("fill", data.color);
+        .attr("width", d => context.x(d.section[1]) - context.x(d.section[0]))
+        .attr("fill", d => d.color);
 
     bars.exit().remove();
 }
@@ -516,35 +523,36 @@ function draw_time(data, state, context) {
 }
 
 function fetch_data(primary, others) {
-    let p = fetch(`/proc/${primary}/activities`).then(response => response.json()).then(json => {
+    let ps = [primary].concat(others).join();
+    let p = fetch(`/proc/${ps}/activities`).then(response => response.json()).then(json => {
         state.data.activity = json;
     }).catch(() => {
         console.log("activity fetch failed");
         delete state.data.activity;
     });
 
-    let q = fetch(`/proc/${primary}/cluster_coords`).then(response => response.json()).then(json => {
+    let q = fetch(`/proc/${ps}/cluster_coords`).then(response => response.json()).then(json => {
         state.data.cluster_coords = json;
     }).catch(() => {
         console.log("cluster coords fetch failed");
         delete state.data.cluster_coords;
     });
 
-    let r = fetch(`/proc/${primary}/misc`).then(response => response.json()).then(json => {
+    let r = fetch(`/proc/${ps}/misc`).then(response => response.json()).then(json => {
         state.data.misc = json;
     }).catch(() => {
         console.log("misc fetch failed");
         delete state.data.misc;
     });
 
-    let s = fetch(`/proc/${primary}/timeseries`).then(response => response.json()).then(json => {
+    let s = fetch(`/proc/${ps}/timeseries`).then(response => response.json()).then(json => {
         state.data.timeseries = json;
     }).catch(() => {
         console.log("timeseries fetch failed");
         delete state.data.timeseries;
     });
 
-    let t = fetch(`/proc/${primary}/timestamps`).then(response => response.json()).then(json => {
+    let t = fetch(`/proc/${ps}/timestamps`).then(response => response.json()).then(json => {
         let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z')
         state.timestamps = _.map(json, t => parse_time(t));
         state.step = _.last(state.timestamps);
@@ -567,10 +575,6 @@ function do_the_things() {
         misc_keys: ['actToolIdent', 'actToolLength1', 'actToolRadius', 'feedRateOvr'],
         data: {}
     };
-
-    if(!state.proc_id) {
-        alert("error p query param not set");
-    }
 
     setup_scatter(state);
     setup_activity(state);
@@ -687,7 +691,7 @@ function do_the_things() {
             let primary = +$("#procselection").val();
             let other = _.difference(selected, [primary]);
 
-            let promises = fetch_data(primary);
+            let promises = fetch_data(primary, other);
             Promise.all(promises).then(() => {
                 state.dispatcher.call("data:change");
                 state.step = _.last(state.timestamps);
