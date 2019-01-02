@@ -17,7 +17,8 @@ get '/tree' do
   send_file file
 end
 
-get '/proc/:ids/cluster_coords' do |id|
+get '/proc/:ids/cluster_coords' do |ids|
+  id = ids.split(',').first
   content_type :json
   file = File.join 'data', id, 'cluster_coords.json'
   halt 400 unless File.exist? file
@@ -25,23 +26,62 @@ get '/proc/:ids/cluster_coords' do |id|
   send_file file
 end
 
-get '/proc/:ids/timeseries' do |id|
+get '/proc/:ids/timeseries' do |ids|
   content_type :json
-  file = File.join 'data', id, 'timeseries.json'
-  halt 400 unless File.exist? file
+  ids = ids.split(',')
+  primary = ids.first
 
-  send_file file
+  data = ids.map do |id|
+    path = File.join 'data', id, 'timeseries.json'
+    halt 400 unless File.exist? path
+
+    json = JSON.parse File.read(path)
+    json[:id] = id
+
+    [id, json]
+  end
+
+  data.each do |id, json|
+    next if id == primary
+    json.keys.each do |thing|
+      next if thing == :id
+      json[thing].keys.each do |axis|
+        primary_start_time = Time.parse data.first.last[thing][axis].first.first
+        diff = Time.parse(json[thing][axis].first.first) - primary_start_time
+
+        json[thing][axis].map! { |t, v| [(Time.parse(t) - diff).iso8601(3), v]}
+      end
+    end
+  end
+
+  data.to_h.to_json
 end
 
-get '/proc/:ids/timestamps' do |id|
+get '/proc/:ids/timestamps' do |ids|
   content_type :json
-  file = File.join 'data', id, 'timestamps.json'
-  halt 400 unless File.exist? file
+  timestamps = ids.split(',').map do |id|
+    path = File.join 'data', id, 'timestamps.json'
+    halt 400 unless File.exist? path
 
-  send_file file
+    json = JSON.parse(File.read path)
+    [json.first, json.last].map { |t| Time.parse t }
+  end
+
+  puts timestamps, "---"
+
+  primary_start_time = timestamps.first.first
+  timestamps[1..-1] = timestamps[1..-1].map do |ts|
+    diff = ts.first - primary_start_time
+    ts.map { |t| t - diff }
+  end
+
+  puts timestamps
+
+  timestamps.reduce(&:+).sort.uniq.map { |t| t.iso8601(3) }.to_json
 end
 
-get '/proc/:ids/misc' do |id|
+get '/proc/:ids/misc' do |ids|
+  id = ids.split(',').first
   content_type :json
   file = File.join 'data', id, 'misc.json'
   halt 400 unless File.exist? file
@@ -54,16 +94,18 @@ get '/proc/:ids/activities' do |ids|
   ids = ids.split(',')
   primary = ids.first
 
-  files = ids.map do |id|
+  data = ids.map do |id|
     path = File.join 'data', id, 'activities.json'
+    halt 400 unless File.exist? path
+
     json = JSON.parse File.read(path)
     json[:id] = id
 
     [id, json]
   end
 
-  primary_start_time = Time.parse files.first.last['sections'].first.first
-  files = files.map do |id, json|
+  primary_start_time = Time.parse data.first.last['sections'].first.first
+  data = data.map do |id, json|
     next [id, json] if id == primary
     diff = Time.parse(json['sections'].first.first) - primary_start_time
     json['sections'].map! do |ts|
@@ -73,7 +115,7 @@ get '/proc/:ids/activities' do |ids|
     [id, json]
   end
 
-  files.to_h.to_json
+  data.to_h.to_json
 end
 
 put '/proc/:id/classification' do |id|

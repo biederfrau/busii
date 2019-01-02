@@ -1,3 +1,5 @@
+const NON_PRIMARY_TS_COLOR = "#b6b6b4";
+
 function setup_scatter(state) {
     let style = window.getComputedStyle(document.getElementById('scatter')),
         margin = {top: 20, right: 20, bottom: 23, left: 37},
@@ -185,9 +187,13 @@ function setup_activity(state) {
         state.dispatcher.call("control:step-drag", this, time);
     }).on('end', () => {
         let time = x.invert(d3.event.x);
+        console.log(time)
         time = _.max([_.first(state.timestamps), time]);
         time = _.min([_.last(state.timestamps), time]);
         time_line.attr("x1", x(time)).attr("x2", x(time));
+
+        console.log(time)
+        console.log(_.last(state.timestamps))
 
         state.step = time;
         state.dispatcher.call("control:step", this, time);
@@ -295,7 +301,7 @@ function setup_gantt(name, data) {
 
 function draw_gantt(name, data, state, context) {
     let style = window.getComputedStyle(document.getElementById(name + '-svg')),
-        margin = {top: 20, right: 20, bottom: 23, left: 100},
+        margin = {top: 20, right: 20, bottom: 23, left: 30},
         width = parseFloat(style.width),
         height = parseFloat(style.height),
         canvas = d3.select("#" + name + '-svg');
@@ -317,6 +323,12 @@ function draw_gantt(name, data, state, context) {
     canvas.select(".xaxis").call(d3.axisBottom(context.x));
     canvas.select(".yaxis").call(d3.axisLeft(context.y));
 
+    canvas.selectAll(".yaxis .tick text").text(function(d) {
+        if(d.length > 15) { d = d.substring(0, 12) + '...'; }
+        return d;
+    }).attr('data-tippy-content', d => d);
+    tippy(`#${name}-svg .yaxis .tick text`);
+
     let bars = canvas.selectAll(".bar").data(parsed_data);
 
     bars.enter().insert("rect", ".time-mask")
@@ -326,7 +338,10 @@ function draw_gantt(name, data, state, context) {
         .attr("y", d => context.y(d[2]))
         .attr("height", context.y.bandwidth())
         .attr("width", d => context.x(d[1]) - context.x(d[0]))
-        .attr("fill", d => colors(d[2]));
+        .attr("fill", d => colors(d[2]))
+        .attr("data-tippy-content", d => d[2]);
+
+    tippy(`#${name}-svg .bar`)
 
     bars.exit().remove();
 }
@@ -479,7 +494,8 @@ function draw_time(data, state, context) {
     }
     canvas.selectAll(".no-data").remove();
 
-    let keys_i = _.map(data, (_, k) => k), keys_j = ['X', 'Y', 'Z'];
+    let vs = _.values(data);
+    let keys_i = _.keys(_.first(vs)), keys_j = ['X', 'Y', 'Z'];
 
     let colors = {
         'aaVactB': "#2B65EC",
@@ -497,29 +513,44 @@ function draw_time(data, state, context) {
         }
 
         for(let j = 0; j < 3; ++j) {
-            let cur_data = data[keys_i[i]][keys_j[j]];
-            let parsed_data = _.map(cur_data, x => [parse_time(x[0]), x[1]]);
+            let cur_data = _.map(vs, v => {
+                return { 'id': v.id, 'series': v[keys_i[i]][keys_j[j]] };
+            });
 
-            context.axes[i][j].x.domain([parsed_data[0][0], _.last(parsed_data)[0]]);
+            let parsed_data = _.map(cur_data, d => {
+                d['series'] = _.map(d['series'], x => [parse_time(x[0]), x[1]])
+                return d;
+            });
+
+            context.axes[i][j].x.domain(d3.extent(_.flatMap(parsed_data, d => _.flatten(_.map(d['series'], x => x[0])))));
             canvas.select(`.xaxis-${i}-${j}`).call(d3.axisBottom(context.axes[i][j].x).ticks(8));
 
-            context.axes[i][j].y.domain(d3.extent(parsed_data, x => x[1]));
+            context.axes[i][j].y.domain(d3.extent(_.flatMap(parsed_data, d => _.flatten(_.map(d['series'], x => x[1])))));
             canvas.select(`.yaxis-${i}-${j}`).call(d3.axisLeft(context.axes[i][j].y).ticks(8));
 
-            let line = d3.line().x(d => context.axes[i][j].x(d[0])).y(d => context.axes[i][j].y(d[1]));
+            let line = d3.line().x(d => context.axes[i][j].x(d[0])).y(d => context.axes[i][j].y(d[1])).curve(d3.curveLinear);
 
             let group = canvas.select(`.group-${i}-${j}`);
-            let lines = group.selectAll('.line').data([parsed_data]);
-            lines.enter().append("path")
+            let lines = group.selectAll('.line').data(parsed_data);
+            lines.enter().insert("path", ".primary")
                 .classed("line", true)
                 .merge(lines)
-                .attr("d", line)
-                .attr("stroke", colors[keys_i[i]])
-                .attr("fill", "none");
+                .attr("d", d => line(d['series']))
+                .classed("primary", d => d.id == state.primary)
+                .attr("stroke", d =>  d.id == state.primary ? colors[keys_i[i]] : NON_PRIMARY_TS_COLOR)
+                .attr("stroke-width", 1.5)
+                .style("opacity", d => d.id == state.primary ? 0.9 : 1 / state.processes.length)
+                .attr("fill", "none")
+                .attr("data-tippy-content", d => `process ${d.id}`);
 
             lines.exit().remove();
         }
     }
+
+    tippy("#time .line", {
+        'followCursor': true,
+    });
+    canvas.selectAll(".primary").raise();
 }
 
 function fetch_data(primary, others) {
@@ -570,8 +601,8 @@ function do_the_things() {
         stepsize: 60,
         interval: 1,
         timestamps: [],
-        dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change"),
-        proc_id: new URL(window.location.href).searchParams.get("p"),
+        dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change", "primary:change"),
+        processes: [],
         misc_keys: ['actToolIdent', 'actToolLength1', 'actToolRadius', 'feedRateOvr'],
         data: {}
     };
@@ -693,8 +724,11 @@ function do_the_things() {
 
             let promises = fetch_data(primary, other);
             Promise.all(promises).then(() => {
+                state.primary = primary;
+                state.processes = selected;
                 state.dispatcher.call("data:change");
                 state.step = _.last(state.timestamps);
+
                 state.dispatcher.call("control:step", this, state.step);
             });
         },
