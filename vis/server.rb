@@ -18,12 +18,17 @@ get '/tree' do
 end
 
 get '/proc/:ids/cluster_coords' do |ids|
-  id = ids.split(',').first
   content_type :json
-  file = File.join 'data', id, 'cluster_coords.json'
-  halt 400 unless File.exist? file
 
-  send_file file
+  min_size = params[:c].to_i
+  id = ids.split(',').first
+  path = File.join 'data', id, 'cluster_coords.json'
+  halt 400 unless File.exist? path
+
+  data = JSON.parse File.read(path)
+  data.keep_if { |cluster| cluster['points'].size >= min_size }
+
+  data.to_json
 end
 
 get '/proc/:ids/timeseries' do |ids|

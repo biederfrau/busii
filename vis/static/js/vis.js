@@ -91,7 +91,8 @@ function setup_scatter(state) {
         canvas.selectAll(".point").classed("inactive", d => {
             let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%f%Z')
             let tp = parse_time(d[3]);
-            return tp >= t;
+
+            return tp >= t; //|| tp <= t - state.drop_after*1000;
         });
     });
 
@@ -203,14 +204,10 @@ function setup_activity(state) {
 
         state.dispatcher.call("control:step-drag", this, time);
     }).on('end', () => {
-        let time = x.invert(d3.event.x);
-        console.log(time)
+        let time = x.invert(d3.event.x - 10);
         time = _.max([_.first(state.timestamps), time]);
         time = _.min([_.last(state.timestamps), time]);
         time_line.attr("x1", x(time)).attr("x2", x(time));
-
-        console.log(time)
-        console.log(_.last(state.timestamps))
 
         state.step = time;
         state.dispatcher.call("control:step", this, time);
@@ -267,6 +264,7 @@ function draw_activity(data, state, context) {
         .attr("height", context.y.bandwidth())
         .attr("width", d => context.x(d.section[1]) - context.x(d.section[0]))
         .attr("fill", d => d.color);
+        // .style("opacity", d => d.id == state.primary ? 1 : 0.6);
 
     bars.exit().remove();
 }
@@ -282,7 +280,7 @@ function setup_misc(state) {
 }
 
 function setup_gantt(name, data) {
-    let style = window.getComputedStyle(document.getElementById(name + '-svg')),
+    let style = window.getComputedStyle(_.first($(".tab-content.active").get())), // XXX non-hidden one
         margin = {top: 28, right: 20, bottom: 23, left: 100},
         width = parseFloat(style.width),
         height = parseFloat(style.height),
@@ -313,20 +311,19 @@ function setup_gantt(name, data) {
         draw_gantt(name, state.data.misc, state, ctx);
     });
 
-    state.dispatcher.on(`gantt:select.${name}`, process => {
-        state.gantt_selected = process;
+    state.dispatcher.on(`gantt:select.${name} primary:change.${name}`, process => {
         draw_gantt(name, state.data.misc, state, ctx);
         let xcoord = x(state.step);
         canvas.select(".time-mask")
             .attr("x", xcoord + 1)
             .attr("width", width - margin.right - xcoord);
-    })
+    });
 
     draw_gantt(name, data, state, ctx);
 }
 
 function draw_gantt(name, data, state, context) {
-    let style = window.getComputedStyle(document.getElementById(name + '-svg')),
+    let style = window.getComputedStyle(_.first($(".tab-content.active").get())), // XXX non-hidden one
         margin = {top: 20, right: 20, bottom: 23, left: 30},
         width = parseFloat(style.width),
         height = parseFloat(style.height),
@@ -351,6 +348,7 @@ function draw_gantt(name, data, state, context) {
         .attr("height", h)
         .attr("fill", "lightgrey")
         .on("click", d => {
+            state.gantt_selected = d;
             state.dispatcher.call("gantt:select", this, d);
         });
     process_butts.exit().remove();
@@ -403,7 +401,7 @@ function draw_gantt(name, data, state, context) {
 }
 
 function setup_step(name, data) {
-    let style = window.getComputedStyle(document.getElementById('actToolIdent-svg')), // XXX non-hidden one
+    let style = window.getComputedStyle(_.first($(".tab-content.active").get())), // XXX non-hidden one
         margin = {top: 20, right: 20, bottom: 23, left: 35},
         width = parseFloat(style.width),
         height = parseFloat(style.height),
@@ -435,11 +433,20 @@ function setup_step(name, data) {
         draw_step(name, state.data.misc, state, ctx);
     });
 
+    state.dispatcher.on(`primary:change.${name}`, p => {
+        canvas.selectAll(".line")
+            .classed("primary", d => d.id == state.primary)
+            .attr("stroke", d => d['id'] == state.primary ? MISC_COLORS[name] : NON_PRIMARY_TS_COLOR)
+            .style("opacity", d => d.id == state.primary ? 0.9 : 1 / state.processes.length);
+
+        canvas.selectAll(".primary").raise();
+    })
+
     draw_step(name, data, state, ctx);
 }
 
 function draw_step(name, data, state, context) {
-    let style = window.getComputedStyle(document.getElementById('actToolIdent-svg')), // XXX non-hidden one
+    let style = window.getComputedStyle(_.first($(".tab-content.active").get())), // XXX non-hidden one
         width = parseFloat(style.width),
         height = parseFloat(style.height),
         canvas = d3.select("#" + name + '-svg');
@@ -475,9 +482,14 @@ function draw_step(name, data, state, context) {
         .attr("stroke", d => d['id'] == state.primary ? MISC_COLORS[name] : NON_PRIMARY_TS_COLOR)
         .attr("stroke-width", 2)
         .style("opacity", d => d.id == state.primary ? 0.9 : 1 / state.processes.length)
+        .attr("data-tippy-content", d => `process ${d.id}`)
         .attr("fill", "none");
 
+    lines.exit().remove();
+
+    tippy(`#${name}-svg .line`, { 'followCursor': true, });
     canvas.selectAll(".primary").raise();
+    canvas.selectAll(".time-mask").raise();
 }
 
 function setup_time(state) {
@@ -527,6 +539,15 @@ function setup_time(state) {
         }
     });
 
+    state.dispatcher.on("primary:change.time", p => {
+        canvas.selectAll(".line")
+            .classed("primary", d => d.id == state.primary)
+            .attr("stroke", d =>  d.id == state.primary ? TIMESERIES_COLORS[d.thing] : NON_PRIMARY_TS_COLOR)
+            .style("opacity", d => d.id == state.primary ? 0.9 : 1 / state.processes.length);
+
+        canvas.selectAll(".primary").raise();
+    });
+
     let ctx = { "axes": axes, "width_cols": width_cols, "height_rows": height_rows };
 
     state.dispatcher.on("data:change.time", () => {
@@ -553,7 +574,6 @@ function draw_time(data, state, context) {
     let vs = _.values(data);
     let keys_i = _.keys(_.first(vs)), keys_j = ['X', 'Y', 'Z'];
 
-
     for(let i = 0; i < 3; ++i) {
         if(canvas.selectAll(".title-text").size() < 3) {
             canvas.append("text").text(keys_i[i])
@@ -565,7 +585,7 @@ function draw_time(data, state, context) {
 
         for(let j = 0; j < 3; ++j) {
             let cur_data = _.map(vs, v => {
-                return { 'id': v.id, 'series': v[keys_i[i]][keys_j[j]] };
+                return { 'id': v.id, 'series': v[keys_i[i]][keys_j[j]], 'thing': keys_i[i] };
             });
 
             let parsed_data = _.map(cur_data, d => {
@@ -588,7 +608,7 @@ function draw_time(data, state, context) {
                 .merge(lines)
                 .attr("d", d => line(d['series']))
                 .classed("primary", d => d.id == state.primary)
-                .attr("stroke", d =>  d.id == state.primary ? TIMESERIES_COLORS[keys_i[i]] : NON_PRIMARY_TS_COLOR)
+                .attr("stroke", d =>  d.id == state.primary ? TIMESERIES_COLORS[d.thing] : NON_PRIMARY_TS_COLOR)
                 .attr("stroke-width", 1.5)
                 .style("opacity", d => d.id == state.primary ? 0.9 : 1 / state.processes.length)
                 .attr("fill", "none")
@@ -598,9 +618,7 @@ function draw_time(data, state, context) {
         }
     }
 
-    tippy("#time .line", {
-        'followCursor': true,
-    });
+    tippy("#time .line", { 'followCursor': true, });
     canvas.selectAll(".primary").raise();
 }
 
@@ -613,7 +631,7 @@ function fetch_data(primary, others) {
         delete state.data.activity;
     });
 
-    let q = fetch(`/proc/${ps}/cluster_coords`).then(response => response.json()).then(json => {
+    let q = fetch(`/proc/${ps}/cluster_coords?${$.param({'c': state.min_cluster})}`).then(response => response.json()).then(json => {
         state.data.cluster_coords = json;
     }).catch(() => {
         console.log("cluster coords fetch failed");
@@ -638,6 +656,7 @@ function fetch_data(primary, others) {
         let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z')
         state.timestamps = _.map(json, t => parse_time(t));
         state.step = _.last(state.timestamps);
+        state.stepsize = _.ceil((_.last(state.timestamps) - _.first(state.timestamps))/(100 * 1000));
     }).catch(() => {
         console.log("timestamp fetch failed");
         delete state.data.timeseries;
@@ -651,6 +670,8 @@ function do_the_things() {
     state = {
         stepsize: 60,
         interval: 1,
+        min_cluster: 0,
+        drop_after: 50,
         timestamps: [],
         dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change", "primary:change", "gantt:select"),
         processes: [],
@@ -777,9 +798,19 @@ function do_the_things() {
             });
         },
         onHide: (tip) => {
-            let selected = _.map($(".treetable tr.leaf.selected"), e => $(e).data('tt-id'));
+            let selected = _.map($(".treetable tr.leaf.selected"), e => $(e).data('tt-id')).sort();
             let primary = +$("#procselection").val();
             let other = _.difference(selected, [primary]);
+
+            if(_.isEqual(selected, state.processes)) {
+                if(state.primary != primary) {
+                    state.primary = primary;
+                    state.gantt_selected = primary;
+                    state.dispatcher.call("primary:change", this, primary);
+                }
+
+                return;
+            }
 
             let promises = fetch_data(primary, other);
             Promise.all(promises).then(() => {
@@ -808,21 +839,34 @@ function do_the_things() {
 
             let rendered = Mustache.render(template, {
                 stepsize: state.stepsize,
-                interval: state.interval
+                interval: state.interval,
+                drop_after: state.drop_after,
+                min_cluster: state.min_cluster,
             });
 
             $("input#stepsize").change(function() {
-                let stepsize = +$("input#stepsize").val();
+                let stepsize = +$(this).val();
                 state.stepsize = stepsize;
             });
 
             $("input#interval").change(function() {
-                let interval = +$("input#interval").val();
+                let interval = +$(this).val();
                 state.interval = interval;
+            });
+
+            $("input#drop-after").change(function() {
+                console.log("wat")
+                let drop_after = +$(this).val();
+                state.drop_after = drop_after;
+            });
+
+            $("input#min-cluster").change(function() {
+                let min_cluster = +$(this).val();
+                state.min_cluster = min_cluster;
             });
 
             tip.setContent(rendered);
         },
         theme: "light-border",
-    })
+    });
 }

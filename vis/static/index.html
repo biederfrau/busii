@@ -79,6 +79,18 @@
           <label for="interval">step interval (s)</label>
           <input id="interval" value="{{interval}}" type="number" min="1"/>
         </div>
+
+        <div>
+          <label for="drop-after">drop points after (s)</label>
+          <input id="drop-after" value="{{drop_after}}" type="number" min="1"/>
+        </div>
+
+        <hr/>
+
+        <div>
+          <label for="min-cluster">min cluster size</label>
+          <input id="min-cluster" value="{{min_cluster}}" type="number" min="0"/>
+        </div>
       </form>
     </template>
   </head>
