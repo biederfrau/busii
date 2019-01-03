@@ -1,5 +1,22 @@
 const NON_PRIMARY_TS_COLOR = "#b6b6b4";
 
+const TIMESERIES_COLORS = {
+    'aaVactB': "#2B65EC",
+    'aaLoad': "#4E9258",
+    'aaTorque': "#F87217"
+};
+
+const MISC_COLORS = {
+    'feedRateOvr': "#736AFF",
+    'actToolRadius': "#728C00",
+    'actToolLength1': "#E8A317"
+};
+
+const TS_GUTTER = {
+    'x': 60,
+    'y': 70
+};
+
 function setup_scatter(state) {
     let style = window.getComputedStyle(document.getElementById('scatter')),
         margin = {top: 20, right: 20, bottom: 23, left: 37},
@@ -266,7 +283,7 @@ function setup_misc(state) {
 
 function setup_gantt(name, data) {
     let style = window.getComputedStyle(document.getElementById(name + '-svg')),
-        margin = {top: 30, right: 20, bottom: 23, left: 100},
+        margin = {top: 28, right: 20, bottom: 23, left: 100},
         width = parseFloat(style.width),
         height = parseFloat(style.height),
         canvas = d3.select("#" + name + '-svg');
@@ -293,8 +310,17 @@ function setup_gantt(name, data) {
 
     let ctx = { "x": x, "y": y };
     state.dispatcher.on(`data:change.${name}`, () => {
-        draw_gantt(name, state.data.misc[name], state, ctx);
+        draw_gantt(name, state.data.misc, state, ctx);
     });
+
+    state.dispatcher.on(`gantt:select.${name}`, process => {
+        state.gantt_selected = process;
+        draw_gantt(name, state.data.misc, state, ctx);
+        let xcoord = x(state.step);
+        canvas.select(".time-mask")
+            .attr("x", xcoord + 1)
+            .attr("width", width - margin.right - xcoord);
+    })
 
     draw_gantt(name, data, state, ctx);
 }
@@ -310,10 +336,40 @@ function draw_gantt(name, data, state, context) {
         utils.noData(canvas, width, height);
         return;
     }
+    let cur_data = data[state.gantt_selected][name];
     canvas.selectAll(".no-data").remove();
 
+    let processes = Object.keys(data), w = 25, h = 18, m = 5;
+    let process_butts = canvas.selectAll(".process-butt").data(processes);
+    process_butts.enter().append("rect")
+        .classed("process-butt", true)
+        .merge(process_butts)
+        .classed("selected", d => d == state.gantt_selected)
+        .attr("x", (_, i) => width - margin.right + m - (processes.length - i)*(w+m))
+        .attr("y", 7)
+        .attr("width", w)
+        .attr("height", h)
+        .attr("fill", "lightgrey")
+        .on("click", d => {
+            state.dispatcher.call("gantt:select", this, d);
+        });
+    process_butts.exit().remove();
+
+    let process_text = canvas.selectAll(".process-text").data(processes);
+    process_text.enter().append("text")
+        .classed("process-text", true)
+        .merge(process_text)
+        .attr("x", (_, i) => width - margin.right + m - (processes.length - i)*(w+m) + w/2)
+        .attr("y", 7 + h/2)
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .attr("font-size", 12)
+        .attr("fill", "white")
+        .text(d => d);
+    process_text.exit().remove();
+
     let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z'),
-        parsed_data = _.map(data, x => [parse_time(x[0]), parse_time(x[1]), x[2]]);
+        parsed_data = _.map(cur_data, x => [parse_time(x[0]), parse_time(x[1]), x[2]]);
 
     context.x.domain([parsed_data[0][0], _.last(parsed_data)[1]]);
     context.y.domain(_.map(parsed_data, x => x[2]));
@@ -376,7 +432,7 @@ function setup_step(name, data) {
     let ctx = { "x": x, "y": y, "height": height };
 
     state.dispatcher.on(`data:change.${name}`, () => {
-        draw_step(name, state.data.misc[name], state, ctx);
+        draw_step(name, state.data.misc, state, ctx);
     });
 
     draw_step(name, data, state, ctx);
@@ -394,17 +450,13 @@ function draw_step(name, data, state, context) {
     }
     canvas.selectAll(".no-data").remove();
 
-    let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z'),
-        parsed_data = _.map(data, x => [parse_time(x[0]), x[1]]);
+    let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z');
+    let vs = _.map(_.values(data), d => {
+        return { 'data': _.map(d[name], x => [parse_time(x[0]), x[1]]), 'id': d['id'] };
+    });
 
-    let colors = {
-        'feedRateOvr': "#736AFF",
-        'actToolRadius': "#728C00",
-        'actToolLength1': "#E8A317"
-    };
-
-    context.x.domain([parsed_data[0][0], _.last(parsed_data)[0]]);
-    context.y.domain([0, d3.max(parsed_data, x => x[1])]);
+    context.x.domain(d3.extent(_.flatMap(vs, v => _.map(v['data'], vv => vv[0]))));
+    context.y.domain([0, d3.max(_.flatMap(vs, v => _.map(v['data'], vv => vv[1])))]);
 
     canvas.select(".xaxis").call(d3.axisBottom(context.x));
     canvas.select(".yaxis").call(d3.axisLeft(context.y));
@@ -414,13 +466,18 @@ function draw_step(name, data, state, context) {
         .y(d => context.y(d[1]))
         .curve(d3.curveStepAfter);
 
-    let lines = canvas.selectAll(".line").data([parsed_data]);
+    let lines = canvas.selectAll(".line").data(vs);
     lines.enter().insert("path", ".time-mask")
         .classed("line", true)
         .merge(lines)
-        .attr("d", line)
-        .attr("stroke", colors[name])
+        .classed("primary", d => d.id == state.primary)
+        .attr("d", d => line(d['data']))
+        .attr("stroke", d => d['id'] == state.primary ? MISC_COLORS[name] : NON_PRIMARY_TS_COLOR)
+        .attr("stroke-width", 2)
+        .style("opacity", d => d.id == state.primary ? 0.9 : 1 / state.processes.length)
         .attr("fill", "none");
+
+    canvas.selectAll(".primary").raise();
 }
 
 function setup_time(state) {
@@ -430,16 +487,15 @@ function setup_time(state) {
         height = parseFloat(style.height),
         canvas = d3.select("#time");
 
-    let gutter_x = 60, gutter_y = 100;
-    let width_cols = (width - margin.left - margin.right - 2*gutter_x)/3,
-        height_rows = (height - margin.top - margin.bottom - 2*gutter_y)/3;
+    let width_cols = (width - margin.left - margin.right - 2*TS_GUTTER["x"])/3,
+        height_rows = (height - margin.top - margin.bottom - 2*TS_GUTTER["y"])/3;
 
     let axes = [];
     for(let i = 0; i < 3; ++i) {
         axes.push([]);
         for(let j = 0; j < 3; ++j) {
-            let left = margin.left + i*(width_cols + gutter_x),
-                down = margin.top + j*(height_rows + gutter_y) + height_rows;
+            let left = margin.left + i*(width_cols + TS_GUTTER["x"]),
+                down = margin.top + j*(height_rows + TS_GUTTER["y"]) + height_rows;
 
             canvas.append("g").classed(`xaxis-${i}-${j}`, true).attr("transform", "translate(" + [left, down] + ")");
             let x = d3.scaleTime().range([0, width_cols]);
@@ -462,7 +518,7 @@ function setup_time(state) {
     state.dispatcher.on("control:step.time control:step-drag.time", t => {
         for(let i = 0; i < 3; ++i) {
             for(let j = 0; j < 3; ++j) {
-                let left = margin.left + i*(width_cols + gutter_x);
+                let left = margin.left + i*(width_cols + TS_GUTTER["x"]);
                 let xcoord = axes[i][j].x(t);
                 canvas.select(`.mask-${i}-${j}`)
                     .attr("x", left + Math.max(xcoord, 0) + 1)
@@ -471,7 +527,7 @@ function setup_time(state) {
         }
     });
 
-    let ctx = { "axes": axes, "width_cols": width_cols, "height_rows": height_rows, "gutter_x": gutter_x, "gutter_y": gutter_y };
+    let ctx = { "axes": axes, "width_cols": width_cols, "height_rows": height_rows };
 
     state.dispatcher.on("data:change.time", () => {
         draw_time(state.data.timeseries, state, ctx);
@@ -497,16 +553,11 @@ function draw_time(data, state, context) {
     let vs = _.values(data);
     let keys_i = _.keys(_.first(vs)), keys_j = ['X', 'Y', 'Z'];
 
-    let colors = {
-        'aaVactB': "#2B65EC",
-        'aaLoad': "#4E9258",
-        'aaTorque': "#F87217"
-    };
 
     for(let i = 0; i < 3; ++i) {
         if(canvas.selectAll(".title-text").size() < 3) {
             canvas.append("text").text(keys_i[i])
-                .attr("x", margin.left + i*(context.width_cols + context.gutter_x) + context.width_cols/2)
+                .attr("x", margin.left + i*(context.width_cols + TS_GUTTER["x"]) + context.width_cols/2)
                 .attr("y", 20)
                 .attr("text-anchor", "middle")
                 .classed("title-text", true);
@@ -523,7 +574,7 @@ function draw_time(data, state, context) {
             });
 
             context.axes[i][j].x.domain(d3.extent(_.flatMap(parsed_data, d => _.flatten(_.map(d['series'], x => x[0])))));
-            canvas.select(`.xaxis-${i}-${j}`).call(d3.axisBottom(context.axes[i][j].x).ticks(8));
+            canvas.select(`.xaxis-${i}-${j}`).call(d3.axisBottom(context.axes[i][j].x).ticks(7));
 
             context.axes[i][j].y.domain(d3.extent(_.flatMap(parsed_data, d => _.flatten(_.map(d['series'], x => x[1])))));
             canvas.select(`.yaxis-${i}-${j}`).call(d3.axisLeft(context.axes[i][j].y).ticks(8));
@@ -537,7 +588,7 @@ function draw_time(data, state, context) {
                 .merge(lines)
                 .attr("d", d => line(d['series']))
                 .classed("primary", d => d.id == state.primary)
-                .attr("stroke", d =>  d.id == state.primary ? colors[keys_i[i]] : NON_PRIMARY_TS_COLOR)
+                .attr("stroke", d =>  d.id == state.primary ? TIMESERIES_COLORS[keys_i[i]] : NON_PRIMARY_TS_COLOR)
                 .attr("stroke-width", 1.5)
                 .style("opacity", d => d.id == state.primary ? 0.9 : 1 / state.processes.length)
                 .attr("fill", "none")
@@ -601,7 +652,7 @@ function do_the_things() {
         stepsize: 60,
         interval: 1,
         timestamps: [],
-        dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change", "primary:change"),
+        dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change", "primary:change", "gantt:select"),
         processes: [],
         misc_keys: ['actToolIdent', 'actToolLength1', 'actToolRadius', 'feedRateOvr'],
         data: {}
@@ -671,6 +722,14 @@ function do_the_things() {
         }
     })
 
+    $("#control #readme").click(() => {
+        $(".modal").addClass("active");
+    });
+
+    $(".close").click(() => {
+        $(".modal").removeClass("active");
+    });
+
     tippy("#control #select", {
         trigger: "click",
         arrow: true,
@@ -726,6 +785,7 @@ function do_the_things() {
             Promise.all(promises).then(() => {
                 state.primary = primary;
                 state.processes = selected;
+                if(!state.gantt_selected || !_.includes(state.processes, state.gantt_selected)) { state.gantt_selected = state.primary; }
                 state.dispatcher.call("data:change");
                 state.step = _.last(state.timestamps);
 

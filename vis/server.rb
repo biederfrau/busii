@@ -67,26 +67,46 @@ get '/proc/:ids/timestamps' do |ids|
     [json.first, json.last].map { |t| Time.parse t }
   end
 
-  puts timestamps, "---"
-
   primary_start_time = timestamps.first.first
   timestamps[1..-1] = timestamps[1..-1].map do |ts|
     diff = ts.first - primary_start_time
     ts.map { |t| t - diff }
   end
 
-  puts timestamps
-
   timestamps.reduce(&:+).sort.uniq.map { |t| t.iso8601(3) }.to_json
 end
 
 get '/proc/:ids/misc' do |ids|
-  id = ids.split(',').first
   content_type :json
-  file = File.join 'data', id, 'misc.json'
-  halt 400 unless File.exist? file
+  ids = ids.split(',')
+  primary = ids.first
 
-  send_file file
+  data = ids.map do |id|
+    path = File.join 'data', id, 'misc.json'
+    halt 400 unless File.exist? path
+
+    json = JSON.parse File.read(path)
+    json[:id] = id
+
+    [id, json]
+  end
+
+  data.each do |id, json|
+    next if id == primary
+    json.keys.each do |thing|
+      next if thing == :id
+      primary_start_time = Time.parse data.first.last[thing].first.first
+      diff = Time.parse(json[thing].first.first) - primary_start_time
+
+      if thing == 'actToolIdent' then
+        json[thing].map! { |t, u, v| [(Time.parse(t) - diff).iso8601(3), (Time.parse(u) - diff).iso8601(3), v] }
+      else
+        json[thing].map! { |t, v| [(Time.parse(t) - diff).iso8601(3), v] }
+      end
+    end
+  end
+
+  data.to_h.to_json
 end
 
 get '/proc/:ids/activities' do |ids|

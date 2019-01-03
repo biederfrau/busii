@@ -9,6 +9,65 @@ body {
     padding: 0.2em;
 }
 
+div.modal {
+    position: absolute;
+    width: 100%;
+    height: 120%;
+    top: -100px;
+    left: 0px;
+
+    background: rgba(0, 0, 0, 0.2);
+    z-index: 666;
+    display: none;
+
+    display: none;
+    flex-direction: row;
+    flex-wrap: nowrap;
+
+    justify-content: center;
+    align-items: center;
+}
+
+div.modal.active {
+    display: flex;
+    pointer-events: auto;
+}
+
+div.modal > div {
+    position: relative;
+    width: 600px;
+    height: 500px;
+    padding: 13px 20px 13px 20px;
+    overflow: auto;
+
+    border-radius: 5px;
+    background: #fff;
+    box-shadow: 2px 2px 2px 2px grey;
+    text-align: justify;
+}
+
+.close {
+    cursor: pointer;
+
+    position: absolute;
+    line-height: 25px;
+    width: 25px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+
+    left: 0px;
+    top: 0px;
+}
+
+#close-butt {
+    display: none;
+}
+
+.motherfucking-close:hover {
+    background: #ff8993;
+}
+
 .container {
     display: grid;
     grid-template-columns: 40vw 58.5vw;
@@ -157,4 +216,16 @@ form label {
     width: 125px;
     text-align: right;
     margin-right: 5px;
+}
+
+.process-text {
+    pointer-events: none;
+}
+
+.process-butt {
+    cursor: pointer;
+}
+
+.process-butt:hover, .process-butt.selected {
+    fill: #b2b2b2;
 }
