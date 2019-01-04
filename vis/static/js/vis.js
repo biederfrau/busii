@@ -24,7 +24,7 @@ function setup_scatter(state) {
         height = parseFloat(style.height),
         canvas = d3.select("#scatter");
 
-    let angle = Math.PI/1.15, scale = 0.65, origin = [384, 400];
+    let angle = -Math.PI/1.15, scale = 0.65, origin = [384, 400];
 
     let grid = d3._3d()
         .shape('GRID', 40)
@@ -42,7 +42,7 @@ function setup_scatter(state) {
         .z(d => d[1])
         .origin(origin)
         .rotateX(-angle)
-        .rotateY( angle)
+        .rotateY(angle)
         .scale(scale);
 
     let ctx = { "d3point_proj": d3point_proj, "grid": grid };
@@ -52,8 +52,8 @@ function setup_scatter(state) {
         mouseX = mouseX || 0;
         mouseY = mouseY || 0;
 
-        let beta = (d3.event.x - mx + mouseX) * Math.PI / 530,
-            alpha = (d3.event.y - my + mouseY) * Math.PI / 530;
+        let beta = (d3.event.x - mx + mouseX) * Math.PI / 530 * (-1),
+            alpha = (d3.event.y - my + mouseY) * Math.PI / 530 * (-1);
 
         d3point_proj.rotateY(beta + angle).rotateX(alpha - angle);
         grid.rotateY(beta + angle).rotateX(alpha - angle);
@@ -119,7 +119,7 @@ function draw_scatter(data, state, context) {
     let grid_points = [];
     for(let x = -400; x < 400; x += 20) {
         for(let z = -400; z < 400; z += 20) {
-            grid_points.push([x, z, 0]);
+            grid_points.push([x, z, -10]);
         }
     }
 
@@ -130,7 +130,7 @@ function draw_scatter(data, state, context) {
         .merge(grid)
         .attr("stroke", "black")
         .attr("stroke-width", 0.3)
-        .attr("fill", d => !d.ccw ? 'lightgrey' : '#717171')
+        .attr("fill", d => d.ccw ? 'lightgrey' : '#717171')
         .attr("fill-opacity", 0.9)
         .attr("d", context['grid'].draw);
 
@@ -156,6 +156,8 @@ function draw_scatter(data, state, context) {
             d3.select(this).classed("expanded", d.expanded);
             // TODO
         });
+
+    d3.selectAll('._3d').sort(d3._3d().sort);
 
     tippy("#scatter .point");
     points.exit().remove();
