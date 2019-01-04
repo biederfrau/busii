@@ -251,6 +251,6 @@ table {
     fill: #b2b2b2;
 }
 
-rect:focus {
+rect:focus, path:focus {
     outline: 0;
 }
