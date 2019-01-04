@@ -1,9 +1,16 @@
 #!/usr/bin/env ruby
 # encoding: utf-8
 
+require 'fileutils'
 require 'sinatra'
 
 set :public_dir, './static'
+
+before do
+  return unless request.body.size > 0
+  request.body.rewind
+  @request_payload = JSON.parse request.body.read
+end
 
 get '/' do
   redirect '/index.html'
@@ -143,6 +150,28 @@ get '/proc/:ids/activities' do |ids|
   data.to_h.to_json
 end
 
-put '/proc/:id/classification' do |id|
-  # put a classification for a time segment
+post '/labels' do
+  pid = @request_payload['process']
+  path = File.join 'data/labels.json'
+
+  File.write path, '{}' unless File.exist? path
+  json = JSON.parse File.read(path)
+
+  json[pid] = [] if json[pid].nil?
+  json[pid] << @request_payload
+
+  File.write path, JSON.pretty_generate(json)
+  nil
+end
+
+get '/labels' do
+
+end
+
+get '/labels/:id' do |id|
+  path = 'data/labels.json'
+  halt 400 unless File.exist? path
+
+  json = JSON.parse File.read(path)
+  json[id].to_json
 end

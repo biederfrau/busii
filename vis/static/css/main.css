@@ -211,11 +211,32 @@ table {
     opacity: 0.93;
 }
 
-form label {
+.settings form label {
     display: inline-block;
     width: 155px;
     text-align: right;
     margin-right: 5px;
+}
+
+.classify form label {
+    display: inline-block;
+    width: 35px;
+    text-align: right;
+    margin-right: 5px;
+}
+
+.classify .parent {
+    position: relative;
+    height: 27px;
+}
+
+.classify .right {
+    position: absolute;
+    right: 0;
+}
+
+.classify input[type=submit] {
+    margin-top: 5px;
 }
 
 .process-text {
@@ -228,4 +249,8 @@ form label {
 
 .process-butt:hover, .process-butt.selected {
     fill: #b2b2b2;
+}
+
+rect:focus {
+    outline: 0;
 }

@@ -67,31 +67,52 @@
     </template>
 
     <template id="settings-template">
-      <span>Settings</span>
-      <hr/>
-      <form>
-        <div>
-          <label for="stepsize">stepsize (s)</label>
-          <input id="stepsize" value="{{stepsize}}" type="number" min="1"/>
-        </div>
-
-        <div>
-          <label for="interval">step interval (s)</label>
-          <input id="interval" value="{{interval}}" type="number" min="1"/>
-        </div>
-
-        <div>
-          <label for="drop-after">drop points after (s)</label>
-          <input id="drop-after" value="{{drop_after}}" type="number" min="1"/>
-        </div>
-
+      <div class="settings">
+        <span>Settings</span>
         <hr/>
+        <form>
+          <div>
+            <label for="stepsize">stepsize (s)</label>
+            <input id="stepsize" value="{{stepsize}}" type="number" min="1"/>
+          </div>
 
-        <div>
-          <label for="min-cluster">min cluster size</label>
-          <input id="min-cluster" value="{{min_cluster}}" type="number" min="0"/>
-        </div>
-      </form>
+          <div>
+            <label for="interval">step interval (s)</label>
+            <input id="interval" value="{{interval}}" type="number" min="1"/>
+          </div>
+
+          <div>
+            <label for="drop-after">drop points after (s)</label>
+            <input id="drop-after" value="{{drop_after}}" type="number" min="1"/>
+          </div>
+
+          <hr/>
+
+          <div>
+            <label for="min-cluster">min cluster size</label>
+            <input id="min-cluster" value="{{min_cluster}}" type="number" min="0"/>
+          </div>
+        </form>
+      </div>
+    </template>
+
+    <template id="classify-template">
+      <div class="classify">
+        <span>classify</span>
+        <hr/>
+        <form>
+          <div>
+            <label for="label">label</label>
+            <input id="label" value="" type="text" required/>
+          </div>
+
+          <div class="parent">
+            <div class="right">
+              <input type="submit"/>
+            </div>
+          </div>
+        </form>
+      </div>
     </template>
   </head>
 

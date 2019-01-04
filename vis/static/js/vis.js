@@ -305,7 +305,7 @@ function setup_gantt(name, data) {
         let xcoord = x(t);
         canvas.select(".time-mask")
             .attr("x", xcoord + 1)
-            .attr("width", width - margin.right - xcoord);
+            .attr("width", Math.max(0, width - margin.right - xcoord));
     });
 
     let ctx = { "x": x, "y": y };
@@ -331,7 +331,7 @@ function draw_gantt(name, data, state, context) {
         height = parseFloat(style.height),
         canvas = d3.select("#" + name + '-svg');
 
-    if(!data) {
+    if(!data || data[state.gantt_selected][name].length === 0) {
         utils.noData(canvas, width, height);
         return;
     }
@@ -453,7 +453,7 @@ function draw_step(name, data, state, context) {
         height = parseFloat(style.height),
         canvas = d3.select("#" + name + '-svg');
 
-    if(!data) {
+    if(!data || data[state.gantt_selected][name].length === 0) {
         utils.noData(canvas, width, height);
         return;
     }
@@ -504,9 +504,10 @@ function setup_time(state) {
     let width_cols = (width - margin.left - margin.right - 2*TS_GUTTER["x"])/3,
         height_rows = (height - margin.top - margin.bottom - 2*TS_GUTTER["y"])/3;
 
-    let axes = [];
+    let axes = [], brushes = [];
     for(let i = 0; i < 3; ++i) {
         axes.push([]);
+        brushes.push([]);
         for(let j = 0; j < 3; ++j) {
             let left = margin.left + i*(width_cols + TS_GUTTER["x"]),
                 down = margin.top + j*(height_rows + TS_GUTTER["y"]) + height_rows;
@@ -519,6 +520,15 @@ function setup_time(state) {
 
             canvas.append("g").classed(`group-${i}-${j}`, true).attr("transform", "translate(" + [left, down - height_rows] + ")");
             axes[i].push({ "x": x, "y": y });
+
+            let brush = d3.brushX()
+                .extent([[left, down - height_rows], [left + width_cols, down]])
+                .on("start brush", () => {
+                    console.log(d3.event.selection);
+                });
+
+            canvas.append("g").classed(`brush-${i}-${j}`, true);
+            brushes[i].push(brush);
 
             canvas.append("rect")
                 .classed("time-mask", true)
@@ -550,7 +560,20 @@ function setup_time(state) {
         canvas.selectAll(".primary").raise();
     });
 
-    let ctx = { "axes": axes, "width_cols": width_cols, "height_rows": height_rows };
+    let ctx = { "axes": axes, "brushes": brushes, "width_cols": width_cols, "height_rows": height_rows };
+
+    state.dispatcher.on("classify:new.time", (idx, data) => {
+        let i = idx[0], j = idx[1];
+        console.log(i, j)
+        canvas.select(`.group-${i}-${j}`).insert("rect", "line")
+            .classed("classif", true)
+            .attr("x", axes[i][j].x(data['start']))
+            .attr("y", 0)
+            .attr("width", axes[i][j].x(data['end']) - axes[i][j].x(data['start']))
+            .attr("height", height_rows)
+            .attr("fill", "lightgrey")
+            .style("opacity", 0.2);
+    });
 
     state.dispatcher.on("data:change.time", () => {
         draw_time(state.data.timeseries, state, ctx);
@@ -586,8 +609,9 @@ function draw_time(data, state, context) {
         }
 
         for(let j = 0; j < 3; ++j) {
+            let left = margin.left + i*(context.width_cols + TS_GUTTER["x"]);
             let cur_data = _.map(vs, v => {
-                return { 'id': v.id, 'series': v[keys_i[i]][keys_j[j]], 'thing': keys_i[i] };
+                return { 'id': v.id, 'series': v[keys_i[i]][keys_j[j]], 'thing': keys_i[i], 'axis': keys_j[j] };
             });
 
             let parsed_data = _.map(cur_data, d => {
@@ -600,6 +624,73 @@ function draw_time(data, state, context) {
 
             context.axes[i][j].y.domain(d3.extent(_.flatMap(parsed_data, d => _.flatten(_.map(d['series'], x => x[1])))));
             canvas.select(`.yaxis-${i}-${j}`).call(d3.axisLeft(context.axes[i][j].y).ticks(8));
+
+            canvas.select(`.brush-${i}-${j}`).call(context.brushes[i][j])
+                .selectAll(".selection")
+                .on("contextmenu", function() {
+                    d3.event.preventDefault();
+                    let tip = this._tippy;
+
+                    let content = $("template#classify-template").html();
+                    tip.setContent(content);
+
+                    tip.show();
+
+                    $(tip.popper).find(".classify form").on("submit", e => {
+                        e.preventDefault();
+                        let primary_data = _.find(parsed_data, d => d.id == state.primary);
+
+                        let lo = +canvas.select(`.brush-${i}-${j} .handle--w`).attr("x") + 3 - left,
+                            hi = +canvas.select(`.brush-${i}-${j} .handle--e`).attr("x") + 3 - left;
+
+                        let start = context.axes[i][j].x.invert(lo),
+                            end = context.axes[i][j].x.invert(hi);
+
+                        console.log(context.axes[i][j].x.domain());
+                        console.log(context.axes[i][j].x.range());
+                        console.log(start);
+                        console.log(end);
+
+                        console.log(primary_data['series']);
+                        let start_idx = _.findIndex(primary_data['series'], d => d[0] >= start),
+                            end_idx = _.findIndex(primary_data['series'], d => d[0] >= end);
+
+                        let data = {
+                            'process': state.primary,
+                            'start': start,
+                            'end': end,
+                            'start_idx': start_idx,
+                            'end_idx': end_idx,
+                            'axis': primary_data['axis'],
+                            'thing': primary_data['thing'],
+                            'label': $(tip.popper).find("#label").val(),
+                            'segment': _.slice(primary_data['series'], start_idx, end_idx)
+                        };
+
+                        fetch('/labels', {
+                            'method': 'POST',
+                            'body': JSON.stringify(data)
+                        }).then(response => {
+                            if(response.ok) {
+                                tip.hide();
+                                state.dispatcher.call("classify:new", this, [i, j], data);
+                                canvas.select(`.brush-${i}-${j}`).call(context.brushes[i][j].move, null);
+                            } else {
+                                console.log("omg wat")
+                            }
+                        });
+                    });
+                });
+
+            tippy(`#time .brush-${i}-${j} .selection`, {
+                "arrow": true,
+                'trigger': "manual",
+                "theme": "light-border",
+                "placement": "right",
+                "interactive": true,
+                "sticky": true,
+                "updateDuration": 0
+            });
 
             let line = d3.line().x(d => context.axes[i][j].x(d[0])).y(d => context.axes[i][j].y(d[1])).curve(d3.curveLinear);
 
@@ -675,7 +766,7 @@ function do_the_things() {
         min_cluster: 0,
         drop_after: 50,
         timestamps: [],
-        dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change", "primary:change", "gantt:select"),
+        dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change", "primary:change", "gantt:select", "classify:new"),
         processes: [],
         misc_keys: ['actToolIdent', 'actToolLength1', 'actToolRadius', 'feedRateOvr'],
         data: {}
@@ -846,6 +937,8 @@ function do_the_things() {
                 min_cluster: state.min_cluster,
             });
 
+            tip.setContent(rendered);
+
             $("input#stepsize").change(function() {
                 let stepsize = +$(this).val();
                 state.stepsize = stepsize;
@@ -866,8 +959,6 @@ function do_the_things() {
                 let min_cluster = +$(this).val();
                 state.min_cluster = min_cluster;
             });
-
-            tip.setContent(rendered);
         },
         theme: "light-border",
     });
