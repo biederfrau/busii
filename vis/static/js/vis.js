@@ -426,7 +426,7 @@ function setup_step(name, data) {
         let xcoord = x(t);
         canvas.select(".time-mask")
             .attr("x", xcoord + 1)
-            .attr("width", width - margin.right - xcoord + 5);
+            .attr("width", Math.max(0, width - margin.right - xcoord + 5));
     });
 
     let ctx = { "x": x, "y": y, "height": height };
@@ -512,6 +512,11 @@ function setup_time(state) {
             let left = margin.left + i*(width_cols + TS_GUTTER["x"]),
                 down = margin.top + j*(height_rows + TS_GUTTER["y"]) + height_rows;
 
+            let brush = d3.brushX().extent([[left, down - height_rows], [left + width_cols, down]]);
+
+            canvas.append("g").classed(`brush-${i}-${j}`, true);
+            brushes[i].push(brush);
+
             canvas.append("g").classed(`xaxis-${i}-${j}`, true).attr("transform", "translate(" + [left, down] + ")");
             let x = d3.scaleTime().range([0, width_cols]);
 
@@ -520,15 +525,6 @@ function setup_time(state) {
 
             canvas.append("g").classed(`group-${i}-${j}`, true).attr("transform", "translate(" + [left, down - height_rows] + ")");
             axes[i].push({ "x": x, "y": y });
-
-            let brush = d3.brushX()
-                .extent([[left, down - height_rows], [left + width_cols, down]])
-                .on("start brush", () => {
-                    console.log(d3.event.selection);
-                });
-
-            canvas.append("g").classed(`brush-${i}-${j}`, true);
-            brushes[i].push(brush);
 
             canvas.append("rect")
                 .classed("time-mask", true)
@@ -646,12 +642,6 @@ function draw_time(data, state, context) {
                         let start = context.axes[i][j].x.invert(lo),
                             end = context.axes[i][j].x.invert(hi);
 
-                        console.log(context.axes[i][j].x.domain());
-                        console.log(context.axes[i][j].x.range());
-                        console.log(start);
-                        console.log(end);
-
-                        console.log(primary_data['series']);
                         let start_idx = _.findIndex(primary_data['series'], d => d[0] >= start),
                             end_idx = _.findIndex(primary_data['series'], d => d[0] >= end);
 
