@@ -13,7 +13,7 @@ kind = File.foreach(file).first(50).join.scan(/cpee:name: (.*)$/).last.first
 p = File.basename file, '.xes.yaml'
 h[:color] = COLORMAP_NODEKIND[kind]
 
-events = extract_and_clean_machine_receives(file).flatten.sort_by { |e| e[:server_timestamp] }
+events = extract_and_clean_machine_receives(file).flatten.keep_if { |e| e[:server_timestamp] }.sort_by { |e| e[:server_timestamp] }
 
 a, b = nil, nil
 events.each_cons(2) do |t, u|

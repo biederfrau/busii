@@ -92,13 +92,30 @@ function setup_scatter(state) {
             let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%f%Z')
             let tp = parse_time(d[3]);
 
-            return tp >= t; //|| tp <= t - state.drop_after*1000;
+            if(d[5] != state.primary) {
+                return tp >= t || tp <= t - state.drop_after*1000;
+            }
+
+            return tp >= t;
         });
     });
 
     state.dispatcher.on("data:change.scatter", () => {
         draw_scatter(state.data.cluster_coords, state, ctx);
+        canvas.call(zoom.transform, d3.zoomIdentity);
     });
+
+    state.dispatcher.on("primary:change.scatter", () => {
+        draw_scatter(state.data.cluster_coords, state, ctx);
+        canvas.call(zoom.transform, d3.zoomIdentity);
+    });
+
+    state.dispatcher.on("tool:filter.scatter", tool => {
+        canvas.selectAll(".point").classed("filtered", d => {
+            let filter = tool !== undefined && !_.includes(d[4], tool);
+            return filter;
+        });
+    })
 
     draw_scatter(state.data.cluster_coords, state, ctx);
 }
@@ -134,9 +151,18 @@ function draw_scatter(data, state, context) {
         .attr("fill-opacity", 0.9)
         .attr("d", context['grid'].draw);
 
-    let centroids = _.map(data, d => [d.centroid, d.min_time]);
+    data = _.flatten(_.map(data, (v, k) => {
+        v = _.map(v, vv => {
+            vv['pid'] = k;
+            return vv;
+        });
+
+        return v;
+    }));
+
+    let centroids = _.map(data, d => [d.centroid, d.min_time, d.tools, d.pid]);
     let x_min = d3.median(centroids, d => d[0][0]), y_min = d3.median(centroids, d => d[0][1]), z_min = d3.min(centroids, d => d[0][2]);
-    centroids = _.map(centroids, d => [d[0][0] - x_min, d[0][1] - y_min, d[0][2] - z_min, d[1]]);
+    centroids = _.map(centroids, d => [d[0][0] - x_min, d[0][1] - y_min, d[0][2] - z_min, d[1], d[2], d[3]]);
 
     let points = canvas.selectAll(".point").data(context["d3point_proj"](centroids));
     points.enter().append("circle")
@@ -145,17 +171,24 @@ function draw_scatter(data, state, context) {
         .merge(points)
         .classed("inactive", d => {
             let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%f%Z')
-            let time = parse_time(d[3]);
-            return time >= state.step;
-        }).attr("cx", d => d.projected.x)
+            let tp = parse_time(d[3]);
+
+            if(d[5] != state.primary) {
+                return tp >= state.step || tp <= state.step - state.drop_after*1000;
+            }
+
+            return tp >= state.step;
+        })
+        .classed("filtered", d => {
+            let tool = state.tool_filter;
+            let filter = tool !== undefined && !_.includes(d[4], tool);
+
+            return filter;
+        })
+        .attr("cx", d => d.projected.x)
         .attr("cy", d => d.projected.y)
-        .attr("data-tippy-content", (d, i) => `${_.round(d[0], 3)}, ${_.round(d[1], 3)}, ${_.round(d[2], 3)} (${data[i].points.length})`)
-        .on("mouseover", function() { d3.select(this).raise(); })
-        .on("click", function(d, i) {
-            d.expanded = !d.expanded;
-            d3.select(this).classed("expanded", d.expanded);
-            // TODO
-        });
+        .classed("nonprimary", d => d[5] != state.primary)
+        .attr("data-tippy-content", (d, i) => `${_.round(d[0], 3)}, ${_.round(d[1], 3)}, ${_.round(d[2], 3)} (${data[i].points.length})`);
 
     d3.selectAll('._3d').sort(d3._3d().sort);
 
@@ -304,8 +337,8 @@ function setup_gantt(name, data) {
     state.dispatcher.on(`control:step.${name} control:step-drag.${name}`, t => {
         let xcoord = x(t);
         canvas.select(".time-mask")
-            .attr("x", xcoord + 1)
-            .attr("width", Math.max(0, width - margin.right - xcoord));
+            .attr("x", Math.max(xcoord + 1, margin.left + 1))
+            .attr("width", Math.min(width - margin.right - xcoord, width - margin.left - margin.right));
     });
 
     let ctx = { "x": x, "y": y };
@@ -317,8 +350,8 @@ function setup_gantt(name, data) {
         draw_gantt(name, state.data.misc, state, ctx);
         let xcoord = x(state.step);
         canvas.select(".time-mask")
-            .attr("x", xcoord + 1)
-            .attr("width", width - margin.right - xcoord);
+            .attr("x", Math.max(xcoord + 1, margin.left + 1))
+            .attr("width", Math.min(width - margin.right - xcoord, width - margin.left - margin.right));
     });
 
     draw_gantt(name, data, state, ctx);
@@ -344,6 +377,7 @@ function draw_gantt(name, data, state, context) {
         .classed("process-butt", true)
         .merge(process_butts)
         .classed("selected", d => d == state.gantt_selected)
+        .classed("primary", d => d == state.primary)
         .attr("x", (_, i) => width - margin.right + m - (processes.length - i)*(w+m))
         .attr("y", 7)
         .attr("width", w)
@@ -395,7 +429,19 @@ function draw_gantt(name, data, state, context) {
         .attr("height", context.y.bandwidth())
         .attr("width", d => context.x(d[1]) - context.x(d[0]))
         .attr("fill", d => colors(d[2]))
-        .attr("data-tippy-content", d => d[2]);
+        .attr("data-tippy-content", d => d[2])
+        .on("click", function(d) {
+            state.tool_filter = d[2];
+            canvas.selectAll(".bar").classed("filtered", true);
+            d3.selectAll(".bar").filter(dd => dd[2] === d[2]).classed("filtered", false);
+            state.dispatcher.call("tool:filter", this, state.tool_filter);
+        });
+
+    canvas.on("dblclick", () => {
+        canvas.selectAll(".bar").classed("filtered", false);
+        state.tool_filter = undefined;
+        state.dispatcher.call("tool:filter", this, state.tool_filter);
+    });
 
     tippy(`#${name}-svg .bar`)
 
@@ -426,7 +472,7 @@ function setup_step(name, data) {
         let xcoord = x(t);
         canvas.select(".time-mask")
             .attr("x", xcoord + 1)
-            .attr("width", Math.max(0, width - margin.right - xcoord + 5));
+            .attr("width", Math.max(margin.left, width - margin.right - xcoord + 5));
     });
 
     let ctx = { "x": x, "y": y, "height": height };
@@ -542,7 +588,7 @@ function setup_time(state) {
                 let xcoord = axes[i][j].x(t);
                 canvas.select(`.mask-${i}-${j}`)
                     .attr("x", left + Math.max(xcoord, 0) + 1)
-                    .attr("width", Math.max(width_cols - xcoord, 0)); // FIXME
+                    .attr("width", Math.max(width_cols - xcoord, left)); // FIXME
             }
         }
     });
@@ -560,7 +606,6 @@ function setup_time(state) {
 
     state.dispatcher.on("classify:new.time", (idx, data) => {
         let i = idx[0], j = idx[1];
-        console.log(i, j)
         canvas.select(`.group-${i}-${j}`).insert("rect", "line")
             .classed("classif", true)
             .attr("x", axes[i][j].x(data['start']))
@@ -693,7 +738,7 @@ function draw_time(data, state, context) {
                 .classed("primary", d => d.id == state.primary)
                 .attr("stroke", d =>  d.id == state.primary ? TIMESERIES_COLORS[d.thing] : NON_PRIMARY_TS_COLOR)
                 .attr("stroke-width", 1.5)
-                .style("opacity", d => d.id == state.primary ? 0.9 : 1 / state.processes.length)
+                .style("opacity", d => d.id == state.primary ? 0.7 : 1 / (state.processes.length - 1))
                 .attr("fill", "none")
                 .attr("data-tippy-content", d => `process ${d.id}`);
 
@@ -707,35 +752,35 @@ function draw_time(data, state, context) {
 
 function fetch_data(primary, others) {
     let ps = [primary].concat(others).join();
-    let p = fetch(`/proc/${ps}/activities`).then(response => response.json()).then(json => {
+    let p = fetch(`/proc/${ps}/activities?${$.param({'s': state.shift})}`).then(response => response.json()).then(json => {
         state.data.activity = json;
     }).catch(() => {
         console.log("activity fetch failed");
         delete state.data.activity;
     });
 
-    let q = fetch(`/proc/${ps}/cluster_coords?${$.param({'c': state.min_cluster})}`).then(response => response.json()).then(json => {
+    let q = fetch(`/proc/${ps}/cluster_coords?${$.param({'c': state.min_cluster, 's': state.shift})}`).then(response => response.json()).then(json => {
         state.data.cluster_coords = json;
     }).catch(() => {
         console.log("cluster coords fetch failed");
         delete state.data.cluster_coords;
     });
 
-    let r = fetch(`/proc/${ps}/misc`).then(response => response.json()).then(json => {
+    let r = fetch(`/proc/${ps}/misc?${$.param({'s': state.shift})}`).then(response => response.json()).then(json => {
         state.data.misc = json;
     }).catch(() => {
         console.log("misc fetch failed");
         delete state.data.misc;
     });
 
-    let s = fetch(`/proc/${ps}/timeseries`).then(response => response.json()).then(json => {
+    let s = fetch(`/proc/${ps}/timeseries?${$.param({'s': state.shift})}`).then(response => response.json()).then(json => {
         state.data.timeseries = json;
     }).catch(() => {
         console.log("timeseries fetch failed");
         delete state.data.timeseries;
     });
 
-    let t = fetch(`/proc/${ps}/timestamps`).then(response => response.json()).then(json => {
+    let t = fetch(`/proc/${ps}/timestamps?${$.param({'s': state.shift})}`).then(response => response.json()).then(json => {
         let parse_time = d3.timeParse('%Y-%m-%dT%H:%M:%S.%L%Z')
         state.timestamps = _.map(json, t => parse_time(t));
         state.step = _.last(state.timestamps);
@@ -756,9 +801,11 @@ function do_the_things() {
         min_cluster: 0,
         drop_after: 50,
         timestamps: [],
-        dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change", "primary:change", "gantt:select", "classify:new"),
+        dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change", "primary:change", "gantt:select", "classify:new", "tool:filter"),
         processes: [],
         misc_keys: ['actToolIdent', 'actToolLength1', 'actToolRadius', 'feedRateOvr'],
+        shift: true,
+        tool_filter: undefined,
         data: {}
     };
 
@@ -917,7 +964,7 @@ function do_the_things() {
         size: "large",
         maxWidth: "400px",
         onShown: (tip) => {
-            let template = $("template#settings-template").html();
+            let template = $("script#settings-template").html();
             Mustache.parse(template);
 
             let rendered = Mustache.render(template, {
@@ -925,30 +972,43 @@ function do_the_things() {
                 interval: state.interval,
                 drop_after: state.drop_after,
                 min_cluster: state.min_cluster,
+                time_shift: state.shift,
             });
 
             tip.setContent(rendered);
 
-            $("input#stepsize").change(function() {
-                let stepsize = +$(this).val();
+            $("div.settings").on("submit", function(e) {
+                e.preventDefault();
+
+                let stepsize = +$(this).find("input#stepsize").val();
+                let interval = +$(this).find("input#interval").val();
+                let drop_after = +$(this).find("input#drop-after").val();
+                let min_cluster = +$(this).find("input#min-cluster").val();
+
                 state.stepsize = stepsize;
-            });
-
-            $("input#interval").change(function() {
-                let interval = +$(this).val();
                 state.interval = interval;
-            });
-
-            $("input#drop-after").change(function() {
-                console.log("wat")
-                let drop_after = +$(this).val();
                 state.drop_after = drop_after;
+
+                if(min_cluster !== state.min_cluster) {
+                    state.min_cluster = min_cluster;
+                    // refetch data and notify scatter view
+                }
+
+                let time_shift = $(this).find('input#time-shift').is(':checked');
+                if(time_shift != state.shift) {
+                    state.shift = time_shift;
+
+                    let other = _.difference(state.processes, [state.primary])
+                    let promises = fetch_data(state.primary, other);
+
+                    Promise.all(promises).then(() => {
+                        state.dispatcher.call("data:change");
+                        state.step = _.last(state.timestamps);
+                        state.dispatcher.call("control:step", this, state.step);
+                    });
+                }
             });
 
-            $("input#min-cluster").change(function() {
-                let min_cluster = +$(this).val();
-                state.min_cluster = min_cluster;
-            });
         },
         theme: "light-border",
     });

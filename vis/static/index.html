@@ -66,7 +66,7 @@
       </div>
     </template>
 
-    <template id="settings-template">
+    <script type="html/text" id="settings-template">
       <div class="settings">
         <span>Settings</span>
         <hr/>
@@ -92,9 +92,22 @@
             <label for="min-cluster">min cluster size</label>
             <input id="min-cluster" value="{{min_cluster}}" type="number" min="0"/>
           </div>
+
+          <hr/>
+
+          <div style="text-align: right">
+            <label for="time-warp">time shift</label>
+            <input id="time-shift" value="Time Warp" type="checkbox" {{#time_shift}}checked{{/time_shift}}/>
+          </div>
+
+          <hr/>
+
+          <div style="text-align: right">
+            <input type="submit"/>
+          </div>
         </form>
       </div>
-    </template>
+    </script>
 
     <template id="classify-template">
       <div class="classify">

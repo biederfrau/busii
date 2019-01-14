@@ -186,20 +186,25 @@ svg text {
     r: 4;
 }
 
+#scatter .point.filtered {
+    display: none;
+}
+
+#scatter .point.nonprimary {
+    fill: #C72837;
+}
+
 #scatter .point:hover {
-    fill: #7A95D2;
     stroke: white;
     stroke-width: 0.5;
 }
 
-#scatter .point.expanded {
-    opacity: 0.3;
+#scatter .point.inactive {
+    display: none;
 }
 
-#scatter .point.inactive {
-    fill: grey;
-    opacity: 0.5;
-    display: none;
+#misc .bar.filtered {
+    opacity: 0.4;
 }
 
 table {
@@ -251,6 +256,39 @@ table {
     fill: #b2b2b2;
 }
 
+.process-butt.selected.primary, .primary-butt.selected.primary:hover {
+    fill: #8aad85;
+}
+
+.process-butt.primary {
+    fill: #bed6c3;
+}
+
 rect:focus, path:focus {
     outline: 0;
+}
+
+circle {
+  stroke-width: 2px;
+  stroke-opacity: 1;
+}
+
+.pulse {
+  transform-origin: 50% 50%;
+  animation-duration: 3s;
+  animation-name: pulse;
+  animation-iteration-count: 2;
+}
+
+@keyframes pulse {
+  0% {
+      r: 4;
+  }
+  50% {
+    opacity: 0.4;
+    r: 9;
+  }
+  100% {
+    r: 4;
+  }
 }

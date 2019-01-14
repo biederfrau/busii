@@ -28,18 +28,38 @@ get '/proc/:ids/cluster_coords' do |ids|
   content_type :json
 
   min_size = params[:c].to_i
-  id = ids.split(',').first
-  path = File.join 'data', id, 'cluster_coords.json'
-  halt 400 unless File.exist? path
+  shift = params[:s] == "true" ? true : false
+  primary = ids.split(',').first
 
-  data = JSON.parse File.read(path)
-  data.keep_if { |cluster| cluster['points'].size >= min_size }
+  primary_min_min_time = nil
+  data = ids.split(',').map do |id|
+    path = File.join 'data', id, 'cluster_coords.json'
+    halt 400 unless File.exist? path
 
-  data.to_json
+    data = JSON.parse File.read(path)
+    data.keep_if { |cluster| cluster['points'].size >= min_size }
+
+    if shift then
+      primary_min_min_time = Time.parse(data.min_by { |c| Time.parse c['min_time'] }['min_time']) if id == primary
+      min_min_time = Time.parse(data.min_by { |c| Time.parse c['min_time'] }['min_time'])
+      diff = min_min_time - primary_min_min_time
+
+      data.map! do |c|
+        c['min_time'] = (Time.parse(c['min_time']) - diff).iso8601(5)
+        c
+      end
+    end
+
+    [id, data]
+  end
+
+  data.to_h.to_json
 end
 
 get '/proc/:ids/timeseries' do |ids|
   content_type :json
+  shift = params[:s] == "true" ? true : false
+
   ids = ids.split(',')
   primary = ids.first
 
@@ -52,6 +72,8 @@ get '/proc/:ids/timeseries' do |ids|
 
     [id, json]
   end
+
+  return data.to_h.to_json unless shift
 
   data.each do |id, json|
     next if id == primary
@@ -71,13 +93,17 @@ end
 
 get '/proc/:ids/timestamps' do |ids|
   content_type :json
+  shift = params[:s] == "true" ? true : false
+
   timestamps = ids.split(',').map do |id|
     path = File.join 'data', id, 'timestamps.json'
     halt 400 unless File.exist? path
 
     json = JSON.parse(File.read path)
-    [json.first, json.last].map { |t| Time.parse t }
+    [json.first, json.last].map { |t| Time.parse t } rescue []
   end
+
+  return timestamps.reduce(&:+).sort.uniq.map { |t| t.iso8601 3}.to_json unless shift
 
   primary_start_time = timestamps.first.first
   timestamps[1..-1] = timestamps[1..-1].map do |ts|
@@ -90,6 +116,8 @@ end
 
 get '/proc/:ids/misc' do |ids|
   content_type :json
+  shift = params[:s] == "true" ? true : false
+
   ids = ids.split(',')
   primary = ids.first
 
@@ -103,12 +131,14 @@ get '/proc/:ids/misc' do |ids|
     [id, json]
   end
 
+  return data.to_h.to_json unless shift
+
   data.each do |id, json|
     next if id == primary
     json.keys.each do |thing|
       next if thing == :id
       primary_start_time = Time.parse data.first.last[thing].first.first
-      diff = Time.parse(json[thing].first.first) - primary_start_time
+      diff = Time.parse(json[thing].first.first) - primary_start_time rescue 0
 
       if thing == 'actToolIdent' then
         json[thing].map! { |t, u, v| [(Time.parse(t) - diff).iso8601(3), (Time.parse(u) - diff).iso8601(3), v] }
@@ -123,6 +153,8 @@ end
 
 get '/proc/:ids/activities' do |ids|
   content_type :json
+  shift = params[:s] == "true" ? true : false
+
   ids = ids.split(',')
   primary = ids.first
 
@@ -136,10 +168,12 @@ get '/proc/:ids/activities' do |ids|
     [id, json]
   end
 
+  return data.to_h.to_json unless shift
+
   primary_start_time = Time.parse data.first.last['sections'].first.first
   data = data.map do |id, json|
     next [id, json] if id == primary
-    diff = Time.parse(json['sections'].first.first) - primary_start_time
+    diff = Time.parse(json['sections'].first.first) - primary_start_time rescue 0
     json['sections'].map! do |ts|
       ts.map { |t| Time.parse t }.map { |t| t - diff }.map { |t| t.iso8601(3) }
     end

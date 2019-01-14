@@ -1,5 +1,6 @@
 # encoding: utf-8
 
+require 'pp'
 require 'time'
 require 'yaml'
 
@@ -104,12 +105,12 @@ def extract_and_clean_machine_receives(file)
       {
         name: ugly_event['name'],
         timestamp: Time.parse(ugly_event['timestamp']),
-        server_timestamp: Time.parse(ugly_event['meta']['ServerTimestamp']),
+        server_timestamp: ugly_event.dig('meta', 'ServerTimestamp') ? Time.parse(ugly_event.dig('meta', 'ServerTimestamp')) : nil,
         value: case ugly_event['name'].split('/').last
-               when 'aaLeadP', 'aaTorque', 'aaLoad', 'driveLoad', 'actSpeed', 'aaVactB', 'feedRateOvr', 'actToolRadius', 'actToolLength1', 'speedOvr' then ugly_event['value'].to_f
-               when 'progStatus', 'resetActive', 'acAlarmStat', 'turnState', 'actTNumber', 'findBlActive', 'actLineNumber' then ugly_event['value'].to_i
-               when 'blockNoStr', 'msg', 'actBlock', 'actToolIdent', 'progName1' then ugly_event['value']
-               else puts "unexpected: #{ugly_event['name']}"; end,
+               when 'aaLeadP', 'aaTorque', 'aaLoad', 'driveLoad', 'actSpeed', 'aaVactB', 'feedRateOvr', 'actToolRadius', 'actToolLength1', 'speedOvr', 'X', 'Y', 'Z', 'aaAcc' then ugly_event['value'].to_f
+               when 'progStatus', 'resetActive', 'acAlarmStat', 'turnState', 'actTNumber', 'findBlActive', 'actLineNumber', 'opMode', 'readyActive' then ugly_event['value'].to_i
+               when 'blockNoStr', 'msg', 'actBlock', 'actToolIdent', 'progName1', 'progName2' then ugly_event['value']
+               else puts "unexpected: #{ugly_event['name'].split('/').last}"; end,
         origin: File.basename(file, '.xes.yaml').to_i
       }
     end

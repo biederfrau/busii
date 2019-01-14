@@ -7,6 +7,7 @@ import sklearn
 import sklearn.cluster
 import json
 import os
+from math import isnan
 
 from pathlib import Path
 
@@ -48,14 +49,21 @@ except:
     centroids = []
 
 assignments = assign(centroids, points)
-clusters = [{ "centroid": list(c), "points": [], "times": [] } for c in centroids]
+clusters = [{ "centroid": list(c), "points": [], "times": [], "tools": set() } for c in centroids]
 
-for point, cluster, time in zip(points, assignments, data["T"]):
+print(data["TOOL"])
+for point, cluster, time, tool in zip(points, assignments, data["T"], data["TOOL"]):
     clusters[cluster]["points"].append(list(point))
     clusters[cluster]["times"].append(dateutil.parser.parse(time))
 
+    if tool != 'none':
+        clusters[cluster]["tools"].add(tool)
+
+clusters = [cluster for cluster in clusters if len(cluster["points"]) > 0]
+
 for idx, cluster in enumerate(clusters):
     clusters[idx]["min_time"] = min(cluster["times"])
+    clusters[idx]["tools"] = list(cluster["tools"])
 
 path = Path(sys.argv[1]).parent
 json.dump(clusters, fp=open(f"{path}/cluster_coords.json", 'w+'), default=json_serial)
