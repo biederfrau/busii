@@ -199,7 +199,9 @@ post '/labels' do
 end
 
 get '/labels' do
-
+  content_type :json
+  headers["Content-Disposition"] = "attachment;filename=labels.json"
+  File.read 'data/labels.json'
 end
 
 get '/labels/:id' do |id|

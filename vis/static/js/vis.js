@@ -804,7 +804,7 @@ function do_the_things() {
         dispatcher: d3.dispatch("time:brush", "control:step", "control:step-drag", "data:change", "primary:change", "gantt:select", "classify:new", "tool:filter"),
         processes: [],
         misc_keys: ['actToolIdent', 'actToolLength1', 'actToolRadius', 'feedRateOvr'],
-        shift: true,
+        shift: false,
         tool_filter: undefined,
         data: {}
     };
