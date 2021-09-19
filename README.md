@@ -20,6 +20,7 @@ ML algorithms or other analysis tools.
   <br/>
   <img src="https://github.com/biederfrau/busii/blob/master/ass/final/img/label-dialog.png" />
   <img src="https://github.com/biederfrau/busii/blob/master/ass/final/img/settings.png" />
+  </br>
   Figure 2: Labelling dialog and settings
 </p>
 
